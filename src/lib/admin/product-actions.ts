@@ -99,3 +99,20 @@ export async function uploadProductImage(formData: FormData): Promise<{ ok: bool
   const { data } = db.storage.from("product-images").getPublicUrl(path);
   return { ok: true, url: data.publicUrl };
 }
+
+export async function bulkProductAction(ids: string[], action: "publish" | "draft" | "delete"): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requirePerm("products:write");
+  if (ids.length === 0) return { ok: false, error: "Nothing selected" };
+  const db = createAdminClient();
+  if (action === "delete") {
+    const { error } = await db.from("products").delete().in("id", ids);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await db.from("products").update({ status: action === "publish" ? "published" : "draft" }).in("id", ids);
+    if (error) return { ok: false, error: error.message };
+  }
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: `product.bulk_${action}`, entity: "products", after: { count: ids.length } });
+  revalidatePath("/admin/products");
+  revalidatePath("/products");
+  return { ok: true };
+}
