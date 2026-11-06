@@ -94,26 +94,42 @@ export const demoSettings = {
 
 // ---- admin demo helpers ----
 
-export function demoDashboard() {
-  const now = new Date();
-  const revenueSeries = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now.getTime() - (6 - i) * 86400_000);
-    return { date: d.toISOString().slice(5, 10), revenue: 0 };
-  });
+export function demoDashboard(rangeDays = 7) {
+  const now = Date.now();
+  const start = now - rangeDays * 86400_000;
+  const cur = demoOrders.filter((o) => PAID.includes(o.status) && new Date(o.created_at).getTime() >= start);
+  const revenue = cur.reduce((s, o) => s + o.total_minor, 0);
+  const aov = cur.length ? Math.round(revenue / cur.length) : 0;
+  const mkDelta = (v: number) => ({ value: v > 0 ? "+100%" : "0%", positive: true });
+
+  const byDay = new Map<string, number>();
+  for (let i = rangeDays - 1; i >= 0; i--) byDay.set(new Date(now - i * 86400_000).toISOString().slice(0, 10), 0);
+  for (const o of cur) { const k = o.created_at.slice(0, 10); if (byDay.has(k)) byDay.set(k, (byDay.get(k) ?? 0) + o.total_minor); }
+  const revenueSeries = Array.from(byDay.entries()).map(([date, minor]) => ({ date: date.slice(5), revenue: Math.round(minor / 100) }));
+
+  const catMap = new Map<string, number>();
+  for (const o of cur) for (const it of o.items) catMap.set(catNameOf(it.variant_id), (catMap.get(catNameOf(it.variant_id)) ?? 0) + it.line_total_minor);
+  const categoryBreakdown = Array.from(catMap.entries()).map(([name, revenue]) => ({ name, revenue })).sort((a, b) => b.revenue - a.revenue);
+
+  const recentOrders = [...demoOrders].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, 6)
+    .map((o) => ({ id: o.id, order_number: o.order_number, status: o.status, total_minor: o.total_minor, currency: o.currency, created_at: o.created_at }));
+
   const low = demoProducts.flatMap((p) =>
-    p.product_variants
-      .filter((v) => (v.inventory?.on_hand ?? 0) - (v.inventory?.reserved ?? 0) <= (v.inventory?.low_stock_threshold ?? 5))
-      .map((v) => ({
-        variant_id: v.id,
-        on_hand: v.inventory!.on_hand,
-        reserved: v.inventory!.reserved,
-        low_stock_threshold: v.inventory!.low_stock_threshold,
-        variant: { sku: v.sku, name: v.name, product: { name: p.name } },
-      })),
+    p.product_variants.filter((v) => (v.inventory?.on_hand ?? 0) - (v.inventory?.reserved ?? 0) <= (v.inventory?.low_stock_threshold ?? 5))
+      .map((v) => ({ variant_id: v.id, on_hand: v.inventory!.on_hand, reserved: v.inventory!.reserved, low_stock_threshold: v.inventory!.low_stock_threshold, variant: { sku: v.sku, name: v.name, product: { name: p.name } } })),
   ).slice(0, 8);
+
+  const topProducts = [{ name: "A5 Dotted Notebook", qty: 1 }, { name: "Bamboo Desk Organizer", qty: 1 }, { name: "Rainbow Gel Pens (12-pack)", qty: 1 }];
+
   return {
-    revenue: 0, currency: "LKR", ordersToday: 0, ordersWeek: 0, aov: 0, totalOrders: 0,
-    revenueSeries, low, topProducts: [] as { name: string; qty: number }[],
+    currency: "LKR", range: rangeDays,
+    kpis: {
+      revenue: { value: revenue, delta: mkDelta(revenue) },
+      orders: { value: cur.length, delta: mkDelta(cur.length) },
+      aov: { value: aov, delta: mkDelta(aov) },
+      repeatRate: { value: 0, delta: { value: "0%", positive: true } },
+    },
+    revenueSeries, categoryBreakdown, recentOrders, low, topProducts,
   };
 }
 
@@ -147,4 +163,78 @@ const DEMO_REVIEWS: Record<string, ReviewView[]> = {
 
 export function demoProductReviews(productId: string): ReviewView[] {
   return DEMO_REVIEWS[productId] ?? [];
+}
+
+// ---- demo orders (so the admin ops views are viewable without a backend) ----
+
+export interface DemoOrderItem { id: string; product_name: string; sku: string; unit_price_minor: number; quantity: number; line_total_minor: number; variant_id: string }
+export interface DemoActivity { id: string; action: string; after: unknown; created_at: string }
+export interface DemoOrder {
+  id: string; order_number: string; email: string; status: string; currency: string;
+  subtotal_minor: number; discount_minor: number; shipping_minor: number; tax_minor: number; total_minor: number;
+  shipping_address: Record<string, string>; tracking_number: string | null; notes: string | null;
+  created_at: string; placed_at: string | null;
+  items: DemoOrderItem[];
+  payment: { id: string; provider: string; provider_payment_id: string | null; status: string; amount_minor: number; currency: string } | null;
+  activity: DemoActivity[];
+}
+
+const addr = (full_name: string, line1: string, city: string, phone: string): Record<string, string> => ({ full_name, line1, city, postal_code: "00300", phone, country: "LK" });
+
+export const demoOrders: DemoOrder[] = [
+  {
+    id: "o1", order_number: "WS-20261106-1042", email: "nimali@example.com", status: "paid", currency: "LKR",
+    subtotal_minor: 235000, discount_minor: 23500, shipping_minor: 35000, tax_minor: 0, total_minor: 246500,
+    shipping_address: addr("Nimali Perera", "42 Galle Road", "Colombo 03", "+94 77 123 4567"),
+    tracking_number: null, notes: null, created_at: d(1), placed_at: d(1),
+    items: [
+      { id: "oi1", product_name: "Rainbow Gel Pens (12-pack)", sku: "WS-GEL-12", unit_price_minor: 85000, quantity: 1, line_total_minor: 85000, variant_id: "p1-v0" },
+      { id: "oi2", product_name: "A5 Dotted Notebook", sku: "WS-NB-A5-TEAL", unit_price_minor: 150000, quantity: 1, line_total_minor: 150000, variant_id: "p3-v0" },
+    ],
+    payment: { id: "pay1", provider: "stripe", provider_payment_id: "pi_demo_1", status: "succeeded", amount_minor: 246500, currency: "LKR" },
+    activity: [
+      { id: "ac1", action: "order.placed", after: { status: "pending_payment" }, created_at: d(1) },
+      { id: "ac2", action: "order.paid", after: { status: "paid" }, created_at: d(1) },
+    ],
+  },
+  {
+    id: "o2", order_number: "WS-20261104-2210", email: "dilshan@example.com", status: "shipped", currency: "LKR",
+    subtotal_minor: 420000, discount_minor: 0, shipping_minor: 0, tax_minor: 0, total_minor: 420000,
+    shipping_address: addr("Dilshan Rodrigo", "18 Temple Lane", "Kandy", "+94 71 987 6543"),
+    tracking_number: "LK4820193", notes: "Gift wrap requested.", created_at: d(3), placed_at: d(3),
+    items: [{ id: "oi3", product_name: "Bamboo Desk Organizer", sku: "WS-ORG-BMB", unit_price_minor: 420000, quantity: 1, line_total_minor: 420000, variant_id: "p6-v0" }],
+    payment: { id: "pay2", provider: "stripe", provider_payment_id: "pi_demo_2", status: "succeeded", amount_minor: 420000, currency: "LKR" },
+    activity: [
+      { id: "ac3", action: "order.placed", after: { status: "pending_payment" }, created_at: d(3) },
+      { id: "ac4", action: "order.paid", after: { status: "paid" }, created_at: d(3) },
+      { id: "ac5", action: "order.transition", after: { status: "fulfilled" }, created_at: d(2) },
+      { id: "ac6", action: "order.transition", after: { status: "shipped" }, created_at: d(2) },
+    ],
+  },
+  {
+    id: "o3", order_number: "WS-20261106-5587", email: "ayesha@example.com", status: "pending_payment", currency: "LKR",
+    subtotal_minor: 275000, discount_minor: 0, shipping_minor: 35000, tax_minor: 0, total_minor: 310000,
+    shipping_address: addr("Ayesha Khan", "7 Lake Drive", "Negombo", "+94 76 222 3344"),
+    tracking_number: null, notes: null, created_at: d(0), placed_at: null,
+    items: [{ id: "oi4", product_name: "Watercolour Paint Set (24)", sku: "WS-WC-24", unit_price_minor: 275000, quantity: 1, line_total_minor: 275000, variant_id: "p4-v0" }],
+    payment: null,
+    activity: [{ id: "ac7", action: "order.placed", after: { status: "pending_payment" }, created_at: d(0) }],
+  },
+];
+
+const PAID = ["paid", "fulfilled", "shipped", "delivered"];
+const catNameOf = (variantId: string) => {
+  const pid = variantId.split("-")[0];
+  const prod = demoProducts.find((p) => p.id === pid);
+  return demoCategories.find((c) => c.id === prod?.category_id)?.name ?? "Uncategorized";
+};
+
+export function demoAdminOrderRows() {
+  return demoOrders.map((o) => ({ id: o.id, order_number: o.order_number, email: o.email, status: o.status, total_minor: o.total_minor, currency: o.currency, created_at: o.created_at }));
+}
+
+export function demoAdminOrder(id: string) {
+  const o = demoOrders.find((x) => x.id === id);
+  if (!o) return null;
+  return { order: o, items: o.items, payment: o.payment, refunds: [] as unknown[], activity: o.activity };
 }

@@ -105,3 +105,13 @@ export async function createRefund(input: RefundInputForm): Promise<{ ok: boolea
   revalidatePath("/admin/orders");
   return { ok: true };
 }
+
+export async function updateOrderNotes(orderId: string, notes: string): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requirePerm("orders:write");
+  const db = createAdminClient();
+  const { error } = await db.from("orders").update({ notes: notes || null }).eq("id", orderId);
+  if (error) return { ok: false, error: error.message };
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: "order.note", entity: "orders", entity_id: orderId, after: { notes } });
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { ok: true };
+}

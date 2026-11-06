@@ -1,62 +1,94 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSupabase } from "@/lib/env";
-import { demoDashboard } from "@/lib/demo/data";
+import { demoDashboard, demoAdminOrderRows, demoAdminOrder } from "@/lib/demo/data";
 
 const PAID_STATUSES = ["paid", "fulfilled", "shipped", "delivered"];
 
-export async function getDashboardMetrics() {
-  if (!hasSupabase()) return demoDashboard();
+function delta(curr: number, prev: number): { value: string; positive: boolean } {
+  if (prev === 0) return { value: curr > 0 ? "+100%" : "0%", positive: curr >= 0 };
+  const pct = Math.round(((curr - prev) / prev) * 100);
+  return { value: `${pct >= 0 ? "+" : ""}${pct}%`, positive: pct >= 0 };
+}
+
+export async function getDashboardMetrics(rangeDays = 7) {
+  if (!hasSupabase()) return demoDashboard(rangeDays);
   const db = createAdminClient();
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const startWeek = new Date(now.getTime() - 7 * 86400_000).toISOString();
+  const now = Date.now();
+  const start = new Date(now - rangeDays * 86400_000).toISOString();
+  const prevStart = new Date(now - 2 * rangeDays * 86400_000).toISOString();
 
-  const { data: paidOrders } = await db
-    .from("orders").select("total_minor,created_at,currency").in("status", PAID_STATUSES);
+  const { data: paidRows } = await db
+    .from("orders").select("id,total_minor,created_at,currency,customer_id").in("status", PAID_STATUSES).gte("created_at", prevStart);
+  const paid = paidRows ?? [];
+  const cur = paid.filter((o) => o.created_at >= start);
+  const prev = paid.filter((o) => o.created_at < start);
+  const currency = paid[0]?.currency ?? "LKR";
 
-  const orders = paidOrders ?? [];
-  const revenue = orders.reduce((s, o) => s + o.total_minor, 0);
-  const ordersToday = orders.filter((o) => o.created_at >= startToday).length;
-  const ordersWeek = orders.filter((o) => o.created_at >= startWeek).length;
-  const aov = orders.length ? Math.round(revenue / orders.length) : 0;
-  const currency = orders[0]?.currency ?? "LKR";
+  const revenue = cur.reduce((s, o) => s + o.total_minor, 0);
+  const prevRevenue = prev.reduce((s, o) => s + o.total_minor, 0);
+  const aov = cur.length ? Math.round(revenue / cur.length) : 0;
+  const prevAov = prev.length ? Math.round(prevRevenue / prev.length) : 0;
 
-  // Revenue per day for the last 7 days (for the chart).
+  // Repeat-customer rate in the current window.
+  const byCustomer = new Map<string, number>();
+  for (const o of cur) if (o.customer_id) byCustomer.set(o.customer_id, (byCustomer.get(o.customer_id) ?? 0) + 1);
+  const repeat = Array.from(byCustomer.values()).filter((n) => n >= 2).length;
+  const repeatRate = byCustomer.size ? Math.round((repeat / byCustomer.size) * 100) : 0;
+
+  // Daily revenue series across the range.
   const byDay = new Map<string, number>();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 86400_000);
-    byDay.set(d.toISOString().slice(0, 10), 0);
+  for (let i = rangeDays - 1; i >= 0; i--) byDay.set(new Date(now - i * 86400_000).toISOString().slice(0, 10), 0);
+  for (const o of cur) { const k = o.created_at.slice(0, 10); if (byDay.has(k)) byDay.set(k, (byDay.get(k) ?? 0) + o.total_minor); }
+  const revenueSeries = Array.from(byDay.entries()).map(([date, minor]) => ({ date: date.slice(5), revenue: Math.round(minor / 100) }));
+
+  // Revenue by category for current paid orders.
+  const curIds = cur.map((o) => o.id);
+  let categoryBreakdown: { name: string; revenue: number }[] = [];
+  if (curIds.length) {
+    const { data: items } = await db
+      .from("order_items").select("line_total_minor,product:products(category:categories(name))").in("order_id", curIds);
+    const catMap = new Map<string, number>();
+    for (const it of (items ?? []) as unknown as { line_total_minor: number; product: { category: { name: string } | null } | null }[]) {
+      const name = it.product?.category?.name ?? "Uncategorized";
+      catMap.set(name, (catMap.get(name) ?? 0) + it.line_total_minor);
+    }
+    categoryBreakdown = Array.from(catMap.entries()).map(([name, revenue]) => ({ name, revenue })).sort((a, b) => b.revenue - a.revenue);
   }
-  for (const o of orders) {
-    const key = o.created_at.slice(0, 10);
-    if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + o.total_minor);
-  }
-  const revenueSeries = Array.from(byDay.entries()).map(([date, minor]) => ({
-    date: date.slice(5),
-    revenue: Math.round(minor / 100),
-  }));
+
+  // Recent orders (any status).
+  const { data: recentOrders } = await db
+    .from("orders").select("id,order_number,status,total_minor,currency,created_at").order("created_at", { ascending: false }).limit(6);
 
   // Low stock.
   const { data: lowStock } = await db
     .from("inventory")
     .select("variant_id,on_hand,reserved,low_stock_threshold,variant:product_variants(sku,name,product:products(name))")
-    .order("on_hand", { ascending: true })
-    .limit(50);
+    .order("on_hand", { ascending: true }).limit(50);
   const low = (lowStock ?? []).filter((r) => r.on_hand - r.reserved <= r.low_stock_threshold).slice(0, 8);
 
-  // Top products by quantity sold.
+  // Top products.
   const { data: soldItems } = await db.from("order_items").select("product_name,quantity").limit(2000);
   const qtyByName = new Map<string, number>();
   for (const it of soldItems ?? []) qtyByName.set(it.product_name, (qtyByName.get(it.product_name) ?? 0) + it.quantity);
-  const topProducts = Array.from(qtyByName.entries())
-    .map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty).slice(0, 5);
+  const topProducts = Array.from(qtyByName.entries()).map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty).slice(0, 5);
 
-  return { revenue, currency, ordersToday, ordersWeek, aov, totalOrders: orders.length, revenueSeries, low, topProducts };
+  return {
+    currency, range: rangeDays,
+    kpis: {
+      revenue: { value: revenue, delta: delta(revenue, prevRevenue) },
+      orders: { value: cur.length, delta: delta(cur.length, prev.length) },
+      aov: { value: aov, delta: delta(aov, prevAov) },
+      repeatRate: { value: repeatRate, delta: delta(repeatRate, 0) },
+    },
+    revenueSeries, categoryBreakdown,
+    recentOrders: (recentOrders ?? []) as { id: string; order_number: string; status: string; total_minor: number; currency: string; created_at: string }[],
+    low, topProducts,
+  };
 }
 
 export async function getAdminOrders(filter?: { status?: string; q?: string }) {
-  if (!hasSupabase()) return [];
+  if (!hasSupabase()) return demoAdminOrderRows();
   const db = createAdminClient();
   let query = db
     .from("orders")
@@ -70,14 +102,15 @@ export async function getAdminOrders(filter?: { status?: string; q?: string }) {
 }
 
 export async function getAdminOrder(id: string) {
-  if (!hasSupabase()) return null;
+  if (!hasSupabase()) return demoAdminOrder(id);
   const db = createAdminClient();
   const { data: order } = await db.from("orders").select("*").eq("id", id).maybeSingle();
   if (!order) return null;
-  const [{ data: items }, { data: payment }, { data: refunds }] = await Promise.all([
+  const [{ data: items }, { data: payment }, { data: refunds }, { data: activity }] = await Promise.all([
     db.from("order_items").select("*").eq("order_id", id),
     db.from("payments").select("*").eq("order_id", id).maybeSingle(),
     db.from("refunds").select("*").eq("order_id", id).order("created_at", { ascending: false }),
+    db.from("audit_logs").select("id,action,after,created_at").eq("entity", "orders").eq("entity_id", id).order("created_at", { ascending: true }),
   ]);
-  return { order, items: items ?? [], payment: payment ?? null, refunds: refunds ?? [] };
+  return { order, items: items ?? [], payment: payment ?? null, refunds: refunds ?? [], activity: activity ?? [] };
 }
