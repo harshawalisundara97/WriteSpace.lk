@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   Banner, Category, Collection, Product, ProductWithVariants, Promotion,
 } from "@/lib/types";
+import { hasSupabase } from "@/lib/env";
+import {
+  demoCategories, demoCollections, demoProducts, demoBanners, demoPromotions,
+  demoSettings, demoCollectionProducts,
+} from "@/lib/demo/data";
 
 const PRODUCT_SELECT =
   "id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,created_at," +
@@ -24,6 +29,7 @@ export interface CatalogFilters {
 }
 
 export async function getStoreSettings() {
+  if (!hasSupabase()) return demoSettings;
   const supabase = await createClient();
   const { data } = await supabase.from("store_settings").select("*").eq("id", 1).single();
   return {
@@ -36,6 +42,7 @@ export async function getStoreSettings() {
 }
 
 export async function getFeaturedCategories(): Promise<Category[]> {
+  if (!hasSupabase()) return demoCategories;
   const supabase = await createClient();
   const { data } = await supabase
     .from("categories").select("*").eq("is_featured", true).order("position");
@@ -43,12 +50,14 @@ export async function getFeaturedCategories(): Promise<Category[]> {
 }
 
 export async function getAllCategories(): Promise<Category[]> {
+  if (!hasSupabase()) return demoCategories;
   const supabase = await createClient();
   const { data } = await supabase.from("categories").select("*").order("position");
   return data ?? [];
 }
 
 export async function getActiveBanners(placement?: string): Promise<Banner[]> {
+  if (!hasSupabase()) return placement ? demoBanners.filter((b) => b.placement === placement) : demoBanners;
   const supabase = await createClient();
   let q = supabase.from("banners").select("*").order("position");
   if (placement) q = q.eq("placement", placement);
@@ -57,6 +66,7 @@ export async function getActiveBanners(placement?: string): Promise<Banner[]> {
 }
 
 export async function getActivePromotions(): Promise<Promotion[]> {
+  if (!hasSupabase()) return demoPromotions;
   const supabase = await createClient();
   const now = new Date().toISOString();
   const { data } = await supabase
@@ -67,6 +77,7 @@ export async function getActivePromotions(): Promise<Promotion[]> {
 }
 
 export async function getCollectionProducts(slug: string, limit = 8): Promise<ProductWithVariants[]> {
+  if (!hasSupabase()) return demoCollectionProducts(slug).slice(0, limit);
   const supabase = await createClient();
   const { data: col } = await supabase.from("collections").select("id").eq("slug", slug).single();
   if (!col) return [];
@@ -79,6 +90,7 @@ export async function getCollectionProducts(slug: string, limit = 8): Promise<Pr
 }
 
 export async function getFeaturedCollections(): Promise<Collection[]> {
+  if (!hasSupabase()) return demoCollections;
   const supabase = await createClient();
   const { data } = await supabase
     .from("collections").select("*").eq("is_featured", true).order("position");
@@ -86,6 +98,7 @@ export async function getFeaturedCollections(): Promise<Collection[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
+  if (!hasSupabase()) return demoProducts.find((p) => p.slug === slug) ?? null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("products").select(PRODUCT_SELECT).eq("slug", slug).eq("status", "published").maybeSingle();
@@ -93,6 +106,7 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
 }
 
 export async function getRelatedProducts(categoryId: string | null, excludeId: string, limit = 4): Promise<ProductWithVariants[]> {
+  if (!hasSupabase()) return demoProducts.filter((p) => p.category_id === categoryId && p.id !== excludeId).slice(0, limit);
   if (!categoryId) return [];
   const supabase = await createClient();
   const { data } = await supabase
@@ -102,6 +116,23 @@ export async function getRelatedProducts(categoryId: string | null, excludeId: s
 }
 
 export async function getProducts(filters: CatalogFilters): Promise<{ products: ProductWithVariants[]; total: number }> {
+  if (!hasSupabase()) {
+    let list = demoProducts.slice();
+    if (filters.category) { const cat = demoCategories.find((c) => c.slug === filters.category); list = list.filter((p) => p.category_id === cat?.id); }
+    if (filters.ageGroup) list = list.filter((p) => p.age_group === filters.ageGroup || p.age_group === "all");
+    if (filters.brands?.length) list = list.filter((p) => !!p.brand && filters.brands!.includes(p.brand));
+    if (filters.q?.trim()) { const t = filters.q.trim().toLowerCase(); list = list.filter((p) => p.name.toLowerCase().includes(t)); }
+    list = list.filter((p) => {
+      const min = Math.min(...p.product_variants.map((v) => v.price_minor));
+      if (filters.minMinor != null && min < filters.minMinor) return false;
+      if (filters.maxMinor != null && min > filters.maxMinor) return false;
+      if (filters.inStock && !p.product_variants.some((v) => (v.inventory?.on_hand ?? 0) > 0)) return false;
+      return true;
+    });
+    if (filters.sort === "price_asc" || filters.sort === "price_desc") list.sort((a, b) => { const pa = Math.min(...a.product_variants.map((v) => v.price_minor)); const pb = Math.min(...b.product_variants.map((v) => v.price_minor)); return filters.sort === "price_asc" ? pa - pb : pb - pa; });
+    else if (filters.sort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    return { products: list, total: list.length };
+  }
   const supabase = await createClient();
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 12;
@@ -153,12 +184,18 @@ export async function getProducts(filters: CatalogFilters): Promise<{ products: 
 }
 
 export async function getBrands(): Promise<string[]> {
+  if (!hasSupabase()) return Array.from(new Set(demoProducts.map((p) => p.brand).filter(Boolean) as string[])).sort();
   const supabase = await createClient();
   const { data } = await supabase.from("products").select("brand").eq("status", "published").not("brand", "is", null);
   return Array.from(new Set((data ?? []).map((r: { brand: string | null }) => r.brand).filter(Boolean) as string[])).sort();
 }
 
 export async function searchProducts(term: string, limit = 10): Promise<Product[]> {
+  if (!hasSupabase()) {
+    const t = term.trim().toLowerCase();
+    if (!t) return [];
+    return demoProducts.filter((p) => p.name.toLowerCase().includes(t) || (p.brand ?? "").toLowerCase().includes(t)).slice(0, limit) as unknown as Product[];
+  }
   const supabase = await createClient();
   const cleaned = term.trim();
   if (!cleaned) return [];

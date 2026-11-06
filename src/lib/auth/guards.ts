@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AppRole } from "@/lib/types";
+import { hasSupabase } from "@/lib/env";
 
 export interface AdminContext {
   userId: string;
@@ -12,6 +13,7 @@ export interface AdminContext {
 
 // Resolve the current admin/staff context, or null if not an admin.
 export async function getAdminContext(): Promise<AdminContext | null> {
+  if (!hasSupabase()) return null;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;

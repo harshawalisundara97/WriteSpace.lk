@@ -5,11 +5,13 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { CartLine } from "@/lib/types";
+import { hasSupabase } from "@/lib/env";
 
 const CART_COOKIE = "ws_cart";
 const CODE_COOKIE = "ws_promo";
 
 async function currentUserId(): Promise<string | null> {
+  if (!hasSupabase()) return null;
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;
@@ -17,6 +19,7 @@ async function currentUserId(): Promise<string | null> {
 
 // Resolve (or create) the active cart id for this visitor.
 async function resolveCartId(create = true): Promise<string | null> {
+  if (!hasSupabase()) return null;
   const db = createAdminClient();
   const jar = await cookies();
   const userId = await currentUserId();
@@ -91,6 +94,7 @@ export async function getCartCount(): Promise<number> {
 
 export async function addToCart(variantId: string, quantity = 1) {
   if (quantity <= 0) return { ok: false, error: "Invalid quantity" };
+  if (!hasSupabase()) return { ok: false, error: "Demo mode — connect Supabase to enable the cart" };
   const db = createAdminClient();
   const cartId = await resolveCartId(true);
   if (!cartId) return { ok: false, error: "Could not create cart" };
