@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Fraunces } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/cart-provider";
-import { CartDrawer } from "@/components/cart/cart-drawer";
-import { Header } from "@/components/store/header";
-import { SiteFooter } from "@/components/store/site-footer";
+import { Chrome } from "@/components/store/chrome";
 import { getAllCategories } from "@/lib/catalog/queries";
 import { getCartCount } from "@/lib/cart/actions";
 
@@ -23,10 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={`${sans.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <CartProvider initialCount={count}>
-          <Header categories={categories} />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-          <CartDrawer />
+          <Chrome categories={categories}>{children}</Chrome>
         </CartProvider>
       </body>
     </html>
