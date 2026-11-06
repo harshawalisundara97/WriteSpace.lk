@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* WriteSpace.lk design tokens — warm paper + ink, playful accent. */
+@theme {
+  --color-paper: #faf7f2;
+  --color-paper-2: #f3ede3;
+  --color-ink: #1c1a2e;
+  --color-ink-soft: #4a475e;
+  --color-line: #e7ddd0;
+  --color-brand: #3b3a7a;      /* ink-violet */
+  --color-brand-600: #2f2e63;
+  --color-accent: #ff6b57;     /* coral */
+  --color-accent-600: #e8533f;
+  --color-gold: #f4a93a;
+  --color-mint: #2fb3a0;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, serif;
+
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+
+  --shadow-card: 0 1px 2px rgba(28,26,46,.04), 0 8px 24px -12px rgba(28,26,46,.18);
+  --shadow-lift: 0 2px 4px rgba(28,26,46,.06), 0 20px 40px -16px rgba(28,26,46,.28);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Respect reduced motion globally. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+
+.ws-container { width: 100%; margin-inline: auto; max-width: 80rem; padding-inline: 1.25rem; }
