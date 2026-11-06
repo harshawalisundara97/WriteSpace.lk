@@ -1,9 +1,12 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasSupabase } from "@/lib/env";
+import { demoDashboard } from "@/lib/demo/data";
 
 const PAID_STATUSES = ["paid", "fulfilled", "shipped", "delivered"];
 
 export async function getDashboardMetrics() {
+  if (!hasSupabase()) return demoDashboard();
   const db = createAdminClient();
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -53,6 +56,7 @@ export async function getDashboardMetrics() {
 }
 
 export async function getAdminOrders(filter?: { status?: string; q?: string }) {
+  if (!hasSupabase()) return [];
   const db = createAdminClient();
   let query = db
     .from("orders")
@@ -66,6 +70,7 @@ export async function getAdminOrders(filter?: { status?: string; q?: string }) {
 }
 
 export async function getAdminOrder(id: string) {
+  if (!hasSupabase()) return null;
   const db = createAdminClient();
   const { data: order } = await db.from("orders").select("*").eq("id", id).maybeSingle();
   if (!order) return null;

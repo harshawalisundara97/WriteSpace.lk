@@ -1,9 +1,11 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasSupabase } from "@/lib/env";
 
 const PAID = ["paid", "fulfilled", "shipped", "delivered"];
 
 export async function getAdminCustomers() {
+  if (!hasSupabase()) return [];
   const db = createAdminClient();
   const { data: customers } = await db
     .from("customers").select("id,email,full_name,phone,is_blocked,created_at")
@@ -21,6 +23,7 @@ export async function getAdminCustomers() {
 }
 
 export async function getAdminCustomer(id: string) {
+  if (!hasSupabase()) return null;
   const db = createAdminClient();
   const { data: customer } = await db.from("customers").select("*").eq("id", id).maybeSingle();
   if (!customer) return null;

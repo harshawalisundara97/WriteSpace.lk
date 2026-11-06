@@ -5,6 +5,8 @@ import { signOut } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Admin" };
+// Admin is user- and role-specific; never prerender it.
+export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireAdmin();

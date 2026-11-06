@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ShoppingBag, Check } from "lucide-react";
+import { ShoppingBag, Check, Eye } from "lucide-react";
 import { useState } from "react";
 import type { ProductWithVariants } from "@/lib/types";
 import { formatMoney } from "@/lib/pricing/money";
 import { useCart } from "@/components/cart/cart-provider";
+import { useQuickView } from "@/components/store/quick-view";
 import { cn } from "@/lib/utils";
 
 const GRADIENTS = [
@@ -25,6 +26,7 @@ function hashIndex(id: string, mod: number) {
 
 export function ProductCard({ product, index = 0 }: { product: ProductWithVariants; index?: number }) {
   const cart = useCart();
+  const quickView = useQuickView();
   const [justAdded, setJustAdded] = useState(false);
 
   const variants = product.product_variants ?? [];
@@ -79,6 +81,14 @@ export function ProductCard({ product, index = 0 }: { product: ProductWithVarian
             {lowStock && <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-semibold text-ink shadow-card">Only {available} left</span>}
             {soldOut && <span className="rounded-full bg-ink/80 px-2.5 py-1 text-xs font-semibold text-paper">Sold out</span>}
           </div>
+
+          <button
+            onClick={(e) => { e.preventDefault(); quickView.open(product); }}
+            aria-label={`Quick view ${product.name}`}
+            className="absolute bottom-3 left-3 grid h-11 w-11 translate-y-2 place-items-center rounded-full bg-paper/90 text-ink opacity-0 shadow-lift backdrop-blur transition-all duration-300 ease-[var(--ease-out-soft)] group-hover:translate-y-0 group-hover:opacity-100 hover:bg-paper focus-visible:translate-y-0 focus-visible:opacity-100"
+          >
+            <Eye className="h-5 w-5" />
+          </button>
 
           {/* quick add */}
           {!soldOut && (

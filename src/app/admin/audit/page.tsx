@@ -1,12 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasSupabase } from "@/lib/env";
 
 export default async function AuditLogPage() {
-  const db = createAdminClient();
-  const { data: logs } = await db
-    .from("audit_logs")
-    .select("id,action,entity,entity_id,after,created_at,actor")
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const db = hasSupabase() ? createAdminClient() : null;
+  const logs = db
+    ? (await db.from("audit_logs").select("id,action,entity,entity_id,after,created_at,actor").order("created_at", { ascending: false }).limit(200)).data
+    : [];
 
   return (
     <div className="space-y-6">

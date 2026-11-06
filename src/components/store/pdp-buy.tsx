@@ -2,13 +2,33 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Minus, Plus, ShoppingBag, Check } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Check, Truck, ShieldCheck, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart/cart-provider";
 import { formatMoney } from "@/lib/pricing/money";
+import { cn } from "@/lib/utils";
 import type { ProductVariant, Inventory } from "@/lib/types";
 
 type V = ProductVariant & { inventory: Inventory | null };
+
+const COLOR_HEX: Record<string, string> = {
+  black: "#1c1a2e", white: "#f3f0ea", teal: "#2fb3a0", blue: "#3b6fe0", red: "#e8533f",
+  green: "#3ba55d", yellow: "#f4c13a", pink: "#ef7bb0", purple: "#8b5cf6", orange: "#f49a3a",
+  natural: "#c9b18a", bamboo: "#c9b18a", grey: "#9a97a8", gray: "#9a97a8", brown: "#8a5a3c",
+};
+
+function colorOf(v: V): string | null {
+  const hay = `${v.name ?? ""} ${Object.values(v.options ?? {}).join(" ")}`.toLowerCase();
+  for (const key of Object.keys(COLOR_HEX)) if (hay.includes(key)) return COLOR_HEX[key];
+  return null;
+}
+
+function deliveryWindow(): string {
+  const fmt = (d: Date) => d.toLocaleDateString("en-LK", { weekday: "short", day: "numeric", month: "short" });
+  const a = new Date(Date.now() + 2 * 86400_000);
+  const b = new Date(Date.now() + 4 * 86400_000);
+  return `${fmt(a)} – ${fmt(b)}`;
+}
 
 export function PdpBuy({ variants, currency }: { variants: V[]; currency: string }) {
   const cart = useCart();
@@ -19,6 +39,8 @@ export function PdpBuy({ variants, currency }: { variants: V[]; currency: string
 
   const available = Math.max((selected?.inventory?.on_hand ?? 0) - (selected?.inventory?.reserved ?? 0), 0);
   const onSale = selected?.compare_at_minor != null && selected.compare_at_minor > selected.price_minor;
+  const pctOff = onSale ? Math.round((1 - selected.price_minor / selected.compare_at_minor!) * 100) : 0;
+  const hasColors = active.some((v) => colorOf(v));
 
   async function add() {
     const res = await cart.add(selected.id, qty);
@@ -29,43 +51,65 @@ export function PdpBuy({ variants, currency }: { variants: V[]; currency: string
 
   return (
     <div className="space-y-5">
-      <div className="flex items-baseline gap-3">
+      <div className="flex flex-wrap items-baseline gap-3">
         <span className="font-display text-3xl font-semibold">{formatMoney(selected.price_minor, currency)}</span>
         {onSale && <span className="text-lg text-ink-soft line-through">{formatMoney(selected.compare_at_minor!, currency)}</span>}
+        {onSale && <span className="rounded-full bg-accent/15 px-2.5 py-1 text-sm font-semibold text-accent">Save {pctOff}%</span>}
       </div>
 
       {active.length > 1 && (
         <div>
-          <p className="mb-2 text-sm font-medium">Option</p>
+          <p className="mb-2 text-sm font-medium">{hasColors ? "Colour" : "Option"}</p>
           <div className="flex flex-wrap gap-2">
-            {active.map((v) => (
-              <button key={v.id} onClick={() => { setSelected(v); setQty(1); }}
-                className={`rounded-full border px-4 py-2 text-sm ${selected.id === v.id ? "border-brand bg-brand text-paper" : "border-line hover:border-ink"}`}>
-                {v.name ?? v.sku}
-              </button>
-            ))}
+            {active.map((v) => {
+              const col = colorOf(v);
+              const isSel = selected.id === v.id;
+              return col ? (
+                <button key={v.id} onClick={() => { setSelected(v); setQty(1); }} title={v.name ?? v.sku}
+                  aria-label={v.name ?? v.sku}
+                  className={cn("grid h-9 w-9 place-items-center rounded-full border-2 transition-transform", isSel ? "border-brand scale-110" : "border-line hover:scale-105")}>
+                  <span className="h-6 w-6 rounded-full" style={{ background: col }} />
+                </button>
+              ) : (
+                <button key={v.id} onClick={() => { setSelected(v); setQty(1); }}
+                  className={cn("rounded-full border px-4 py-2 text-sm", isSel ? "border-brand bg-brand text-paper" : "border-line hover:border-ink")}>
+                  {v.name ?? v.sku}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
       <p className="text-sm">
         {available > 0 ? (
-          available <= 5 ? <span className="text-gold font-medium">Only {available} left in stock</span> : <span className="text-mint font-medium">In stock</span>
+          available <= 5 ? <span className="font-medium text-gold">Hurry — only {available} left in stock</span> : <span className="font-medium text-mint">In stock, ready to ship</span>
         ) : <span className="text-ink-soft">Out of stock</span>}
       </p>
 
       <div className="flex items-center gap-3">
         <div className="flex items-center rounded-full border border-line">
-          <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-11 w-11 place-items-center"><Minus className="h-4 w-4" /></button>
-          <span className="w-8 text-center">{qty}</span>
-          <button onClick={() => setQty((q) => Math.min(available, q + 1))} disabled={qty >= available} className="grid h-11 w-11 place-items-center disabled:opacity-40"><Plus className="h-4 w-4" /></button>
+          <button aria-label="Decrease quantity" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-11 w-11 place-items-center"><Minus className="h-4 w-4" /></button>
+          <span className="w-8 text-center tabular-nums">{qty}</span>
+          <button aria-label="Increase quantity" onClick={() => setQty((q) => Math.min(available, q + 1))} disabled={qty >= available} className="grid h-11 w-11 place-items-center disabled:opacity-40"><Plus className="h-4 w-4" /></button>
         </div>
         <Button size="lg" className="flex-1" variant="accent" onClick={add} disabled={available <= 0 || cart.adding}>
           <motion.span key={added ? "added" : "add"} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
-            {added ? <><Check className="h-5 w-5" /> Added</> : <><ShoppingBag className="h-5 w-5" /> Add to cart</>}
+            {added ? <><Check className="h-5 w-5" /> Added to cart</> : <><ShoppingBag className="h-5 w-5" /> Add to cart</>}
           </motion.span>
         </Button>
       </div>
+
+      <div className="flex items-center gap-2 rounded-xl bg-paper-2 px-4 py-3 text-sm">
+        <Truck className="h-4 w-4 text-brand" />
+        <span>Get it <strong>{deliveryWindow()}</strong> to Colombo</span>
+      </div>
+
+      <ul className="grid grid-cols-3 gap-2 pt-1 text-center text-xs text-ink-soft">
+        <li className="flex flex-col items-center gap-1"><ShieldCheck className="h-5 w-5 text-mint" /> Secure checkout</li>
+        <li className="flex flex-col items-center gap-1"><RefreshCw className="h-5 w-5 text-mint" /> 7-day returns</li>
+        <li className="flex flex-col items-center gap-1"><Truck className="h-5 w-5 text-mint" /> Island-wide delivery</li>
+      </ul>
     </div>
   );
 }

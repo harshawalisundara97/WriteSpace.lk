@@ -1,9 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasSupabase } from "@/lib/env";
+import { demoSettings } from "@/lib/demo/data";
 import { SettingsForm } from "@/components/admin/settings-form";
 
 export default async function AdminSettingsPage() {
-  const db = createAdminClient();
-  const { data } = await db.from("store_settings").select("*").eq("id", 1).maybeSingle();
+  const db = hasSupabase() ? createAdminClient() : null;
+  const { data } = db ? await db.from("store_settings").select("*").eq("id", 1).maybeSingle() : { data: demoSettings };
   const initial = {
     store_name: data?.store_name ?? "WriteSpace.lk",
     currency: data?.currency ?? "LKR",

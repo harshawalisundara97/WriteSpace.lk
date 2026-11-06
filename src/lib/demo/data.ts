@@ -91,3 +91,60 @@ export const demoSettings = {
   currency: "LKR",
   store_name: "WriteSpace.lk",
 };
+
+// ---- admin demo helpers ----
+
+export function demoDashboard() {
+  const now = new Date();
+  const revenueSeries = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now.getTime() - (6 - i) * 86400_000);
+    return { date: d.toISOString().slice(5, 10), revenue: 0 };
+  });
+  const low = demoProducts.flatMap((p) =>
+    p.product_variants
+      .filter((v) => (v.inventory?.on_hand ?? 0) - (v.inventory?.reserved ?? 0) <= (v.inventory?.low_stock_threshold ?? 5))
+      .map((v) => ({
+        variant_id: v.id,
+        on_hand: v.inventory!.on_hand,
+        reserved: v.inventory!.reserved,
+        low_stock_threshold: v.inventory!.low_stock_threshold,
+        variant: { sku: v.sku, name: v.name, product: { name: p.name } },
+      })),
+  ).slice(0, 8);
+  return {
+    revenue: 0, currency: "LKR", ordersToday: 0, ordersWeek: 0, aov: 0, totalOrders: 0,
+    revenueSeries, low, topProducts: [] as { name: string; qty: number }[],
+  };
+}
+
+// ---- demo reviews ----
+import type { ReviewView } from "@/lib/reviews/types";
+
+const d = (daysAgo: number) => new Date(Date.now() - daysAgo * 86400_000).toISOString();
+
+const DEMO_REVIEWS: Record<string, ReviewView[]> = {
+  p1: [
+    { id: "r1", rating: 5, title: "Kids love them", body: "Bright colours and they write so smoothly. My daughter uses them every day.", author: "Nimali P.", created_at: d(4), verified: true },
+    { id: "r2", rating: 4, title: "Great value", body: "Good set for the price. One pen was a little faint but the rest are perfect.", author: "Rajiv S.", created_at: d(12), verified: true },
+    { id: "r3", rating: 5, title: "Vivid and fun", body: "The glitter ones are a hit for journaling.", author: "Ayesha K.", created_at: d(20), verified: false },
+  ],
+  p2: [
+    { id: "r4", rating: 5, title: "Feels premium", body: "Lovely weight and a smooth nib. The gift box is a nice touch.", author: "Dilshan R.", created_at: d(6), verified: true },
+    { id: "r5", rating: 4, title: "Elegant", body: "Writes beautifully. Wish it came with more ink colours.", author: "Fathima N.", created_at: d(18), verified: true },
+  ],
+  p3: [
+    { id: "r6", rating: 5, title: "Perfect for bullet journaling", body: "The dotted pages are exactly 5mm and the paper handles fountain pen ink with no bleed.", author: "Tharindu W.", created_at: d(3), verified: true },
+    { id: "r7", rating: 5, title: "Lays flat", body: "Binding is excellent, stays open on the desk.", author: "Sanduni J.", created_at: d(9), verified: true },
+    { id: "r8", rating: 4, title: "Good quality", body: "Cover could be a bit sturdier but the paper is lovely.", author: "Kasun M.", created_at: d(15), verified: false },
+  ],
+  p4: [
+    { id: "r9", rating: 5, title: "Rich pigments", body: "Blends beautifully and the travel brush is handy.", author: "Ishara D.", created_at: d(7), verified: true },
+  ],
+  p6: [
+    { id: "r10", rating: 4, title: "Tidy desk at last", body: "Sturdy bamboo and fits all my pens and sticky notes.", author: "Menaka T.", created_at: d(10), verified: true },
+  ],
+};
+
+export function demoProductReviews(productId: string): ReviewView[] {
+  return DEMO_REVIEWS[productId] ?? [];
+}

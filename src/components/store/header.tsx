@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ShoppingBag, Search, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useCart } from "@/components/cart/cart-provider";
 import { SearchBox } from "@/components/store/search-box";
@@ -13,6 +13,17 @@ export function Header({ categories }: { categories: Category[] }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const topCats = categories.filter((c) => !c.parent_id);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur-md">
@@ -35,8 +46,10 @@ export function Header({ categories }: { categories: Category[] }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          <button aria-label="Search" onClick={() => setSearchOpen(true)} className="grid h-10 w-10 place-items-center rounded-full hover:bg-paper-2">
+          <button aria-label="Search" onClick={() => setSearchOpen(true)} className="flex h-10 items-center gap-2 rounded-full px-2.5 text-ink-soft hover:bg-paper-2 sm:border sm:border-line sm:pr-2">
             <Search className="h-5 w-5" />
+            <span className="hidden text-sm sm:inline">Search</span>
+            <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-xs sm:inline">⌘K</kbd>
           </button>
           <button aria-label="Cart" onClick={cart.open} className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-paper-2">
             <ShoppingBag className="h-5 w-5" />
@@ -75,7 +88,7 @@ export function Header({ categories }: { categories: Category[] }) {
         )}
       </AnimatePresence>
 
-      <SearchBox open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SearchBox open={searchOpen} onClose={() => setSearchOpen(false)} categories={categories} />
     </header>
   );
 }

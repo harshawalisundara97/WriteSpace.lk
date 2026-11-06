@@ -13,7 +13,7 @@ export interface AdminContext {
 
 // Resolve the current admin/staff context, or null if not an admin.
 export async function getAdminContext(): Promise<AdminContext | null> {
-  if (!hasSupabase()) return null;
+  if (!hasSupabase()) return { userId: "demo-admin", role: "admin", permissions: [] };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
