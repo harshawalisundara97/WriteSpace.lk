@@ -1,6 +1,6 @@
 import { CatalogFilters } from "@/components/store/catalog-filters";
 import { ProductGrid } from "@/components/store/product-grid";
-import { getAllCategories, getBrands, getProducts } from "@/lib/catalog/queries";
+import { getAllCategories, getFacets, getProducts } from "@/lib/catalog/queries";
 
 export const metadata = { title: "All products" };
 
@@ -9,12 +9,13 @@ type SP = Record<string, string | string[] | undefined>;
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
+  const ageGroup = (str("age") as "kids" | "adults" | undefined) ?? undefined;
+  const category = str("category");
 
   const filters = {
-    q: str("q"),
-    category: str("category"),
-    ageGroup: (str("age") as "kids" | "adults" | undefined) ?? undefined,
+    q: str("q"), category, ageGroup,
     brands: str("brands")?.split(",").filter(Boolean),
+    colours: str("colours")?.split(",").filter(Boolean),
     minMinor: str("min") ? Number(str("min")) : undefined,
     maxMinor: str("max") ? Number(str("max")) : undefined,
     inStock: str("inStock") === "1",
@@ -23,8 +24,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     pageSize: 24,
   };
 
-  const [{ products, total }, brands, categories] = await Promise.all([
-    getProducts(filters), getBrands(), getAllCategories(),
+  const [{ products, total }, facets, categories] = await Promise.all([
+    getProducts(filters), getFacets({ category, ageGroup }), getAllCategories(),
   ]);
 
   return (
@@ -33,8 +34,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         <h1 className="font-display text-3xl font-semibold">{filters.q ? `Results for “${filters.q}”` : "All products"}</h1>
         <p className="mt-1 text-sm text-ink-soft">{total} item{total === 1 ? "" : "s"}</p>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[220px_1fr]">
-        <CatalogFilters brands={brands} categories={categories} />
+      <div className="grid gap-10 lg:grid-cols-[240px_1fr]">
+        <CatalogFilters facets={facets} categories={categories} />
         <div><ProductGrid products={products} /></div>
       </div>
     </div>

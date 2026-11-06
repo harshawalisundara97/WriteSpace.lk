@@ -4,6 +4,7 @@ import type {
   Banner, Category, Collection, Product, ProductWithVariants, Promotion,
 } from "@/lib/types";
 import { hasSupabase } from "@/lib/env";
+import { variantColorName, COLOR_HEX } from "@/lib/catalog/variant-color";
 import {
   demoCategories, demoCollections, demoProducts, demoBanners, demoPromotions,
   demoSettings, demoCollectionProducts,
@@ -23,6 +24,7 @@ export interface CatalogFilters {
   minMinor?: number;
   maxMinor?: number;
   inStock?: boolean;
+  colours?: string[];
   sort?: "newest" | "price_asc" | "price_desc" | "name";
   page?: number;
   pageSize?: number;
@@ -122,6 +124,7 @@ export async function getProducts(filters: CatalogFilters): Promise<{ products: 
     if (filters.ageGroup) list = list.filter((p) => p.age_group === filters.ageGroup || p.age_group === "all");
     if (filters.brands?.length) list = list.filter((p) => !!p.brand && filters.brands!.includes(p.brand));
     if (filters.q?.trim()) { const t = filters.q.trim().toLowerCase(); list = list.filter((p) => p.name.toLowerCase().includes(t)); }
+    if (filters.colours?.length) list = list.filter((p) => p.product_variants.some((v) => { const c = variantColorName(v.name, v.options); return c && filters.colours!.includes(c); }));
     list = list.filter((p) => {
       const min = Math.min(...p.product_variants.map((v) => v.price_minor));
       if (filters.minMinor != null && min < filters.minMinor) return false;
@@ -169,6 +172,10 @@ export async function getProducts(filters: CatalogFilters): Promise<{ products: 
       const anyStock = p.product_variants.some((v) => (v.inventory?.on_hand ?? 0) - (v.inventory?.reserved ?? 0) > 0);
       if (!anyStock) return false;
     }
+    if (filters.colours?.length) {
+      const match = p.product_variants.some((v) => { const c = variantColorName(v.name, v.options); return c && filters.colours!.includes(c); });
+      if (!match) return false;
+    }
     return true;
   });
 
@@ -215,4 +222,64 @@ export async function searchProducts(term: string, limit = 10): Promise<Product[
     .ilike("name", `%${cleaned}%`)
     .limit(limit);
   return (fuzzy ?? []) as Product[];
+}
+
+export interface Facets {
+  brands: { name: string; count: number }[];
+  colours: { name: string; hex: string; count: number }[];
+  priceMin: number;   // minor
+  priceMax: number;   // minor
+  inStock: number;
+  total: number;
+}
+
+function computeFacets(products: ProductWithVariants[]): Facets {
+  const brandMap = new Map<string, number>();
+  const colourMap = new Map<string, number>();
+  let priceMin = Infinity, priceMax = 0, inStock = 0;
+
+  for (const p of products) {
+    if (p.brand) brandMap.set(p.brand, (brandMap.get(p.brand) ?? 0) + 1);
+    const colours = new Set<string>();
+    let hasStock = false;
+    let pMin = Infinity;
+    for (const v of p.product_variants) {
+      pMin = Math.min(pMin, v.price_minor);
+      const c = variantColorName(v.name, v.options);
+      if (c) colours.add(c);
+      if ((v.inventory?.on_hand ?? 0) - (v.inventory?.reserved ?? 0) > 0) hasStock = true;
+    }
+    if (pMin !== Infinity) { priceMin = Math.min(priceMin, pMin); priceMax = Math.max(priceMax, pMin); }
+    if (hasStock) inStock++;
+    for (const c of colours) colourMap.set(c, (colourMap.get(c) ?? 0) + 1);
+  }
+
+  return {
+    brands: Array.from(brandMap.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name)),
+    colours: Array.from(colourMap.entries()).map(([name, count]) => ({ name, hex: COLOR_HEX[name], count })),
+    priceMin: priceMin === Infinity ? 0 : priceMin,
+    priceMax,
+    inStock,
+    total: products.length,
+  };
+}
+
+// Facet counts for the current browse context (category + age only), so counts
+// reflect what's available without collapsing to zero as the user narrows.
+export async function getFacets(filters: Pick<CatalogFilters, "category" | "ageGroup">): Promise<Facets> {
+  if (!hasSupabase()) {
+    let list = demoProducts.slice();
+    if (filters.category) { const cat = demoCategories.find((c) => c.slug === filters.category); list = list.filter((p) => p.category_id === cat?.id); }
+    if (filters.ageGroup) list = list.filter((p) => p.age_group === filters.ageGroup || p.age_group === "all");
+    return computeFacets(list);
+  }
+  const supabase = await createClient();
+  let q = supabase.from("products").select(PRODUCT_SELECT).eq("status", "published");
+  if (filters.category) {
+    const { data: cat } = await supabase.from("categories").select("id").eq("slug", filters.category).single();
+    if (cat) q = q.eq("category_id", cat.id);
+  }
+  if (filters.ageGroup) q = q.in("age_group", [filters.ageGroup, "all"]);
+  const { data } = await q;
+  return computeFacets((data ?? []) as unknown as ProductWithVariants[]);
 }

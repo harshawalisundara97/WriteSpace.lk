@@ -11,3 +11,9 @@ export function variantColor(name: string | null, options?: Record<string, strin
   for (const key of Object.keys(COLOR_HEX)) if (hay.includes(key)) return COLOR_HEX[key];
   return null;
 }
+
+export function variantColorName(name: string | null, options?: Record<string, string>): string | null {
+  const hay = `${name ?? ""} ${Object.values(options ?? {}).join(" ")}`.toLowerCase();
+  for (const key of Object.keys(COLOR_HEX)) if (hay.includes(key)) return key;
+  return null;
+}
