@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useToast } from "@/components/admin/toast";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/store/status-badge";
 import { transitionOrder, setTracking, createRefund } from "@/lib/admin/order-actions";
@@ -14,8 +15,8 @@ export function OrderControls({
   orderId: string; status: OrderStatus; totalMinor: number; currency: string;
   tracking: string | null; canRefund: boolean;
 }) {
+  const toast = useToast();
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<string | null>(null);
   const [trackInput, setTrackInput] = useState(tracking ?? "");
   const [refundAmount, setRefundAmount] = useState((totalMinor / 100).toString());
   const [refundReason, setRefundReason] = useState("");
@@ -24,10 +25,10 @@ export function OrderControls({
   const transitions = nextStatuses(status).filter((s) => s !== "refunded" && s !== "partially_refunded");
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
-    setMsg(null);
     start(async () => {
       const res = await fn();
-      setMsg(res.ok ? okMsg : res.error ?? "Failed");
+      if (res.ok) toast(okMsg);
+      else toast(res.error ?? "Failed", "error");
     });
   }
 
@@ -89,8 +90,6 @@ export function OrderControls({
           </div>
         </div>
       )}
-
-      {msg && <p className="text-sm text-ink-soft">{msg}</p>}
     </div>
   );
 }

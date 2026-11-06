@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { savePromotion, deletePromotion, saveBanner, deleteBanner } from "@/lib/admin/promo-actions";
+import { useToast } from "@/components/admin/toast";
 import { toMinor, toMajor, formatMoney } from "@/lib/pricing/money";
 import type { Promotion, Banner } from "@/lib/types";
 
@@ -19,6 +20,7 @@ const emptyBanner: BannerDraft = { title: "", image_url: "", link_url: "", place
 
 export function PromotionsManager({ promotions, banners }: { promotions: Promotion[]; banners: Banner[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [pending, start] = useTransition();
   const [promo, setPromo] = useState<PromoDraft | null>(null);
   const [banner, setBanner] = useState<BannerDraft | null>(null);
@@ -35,7 +37,7 @@ export function PromotionsManager({ promotions, banners }: { promotions: Promoti
         stackable: promo.stackable, priority: Number(promo.priority || 0), is_active: promo.is_active,
         starts_at: promo.starts_at || null, ends_at: promo.ends_at || null,
       });
-      if (res.ok) { setPromo(null); router.refresh(); } else setError(res.error ?? "Failed");
+      if (res.ok) { setPromo(null); router.refresh(); toast("Promotion saved"); } else { setError(res.error ?? "Failed"); toast(res.error ?? "Failed", "error"); }
     });
   }
   function saveBan() {
@@ -46,7 +48,7 @@ export function PromotionsManager({ promotions, banners }: { promotions: Promoti
         id: banner.id, title: banner.title, image_url: banner.image_url || null, link_url: banner.link_url,
         placement: banner.placement, position: Number(banner.position || 0), is_active: banner.is_active,
       });
-      if (res.ok) { setBanner(null); router.refresh(); } else setError(res.error ?? "Failed");
+      if (res.ok) { setBanner(null); router.refresh(); toast("Banner saved"); } else { setError(res.error ?? "Failed"); toast(res.error ?? "Failed", "error"); }
     });
   }
 
@@ -70,7 +72,7 @@ export function PromotionsManager({ promotions, banners }: { promotions: Promoti
                   <td className="px-4 py-2">{p.is_active ? "Yes" : "No"}</td>
                   <td className="px-4 py-2 text-right">
                     <button className="mr-3 text-ink-soft hover:text-ink" onClick={() => setPromo({ id: p.id, name: p.name, type: p.type, value: p.type === "fixed" ? String(toMajor(p.value)) : String(p.value), code: p.code ?? "", min: String(toMajor(p.min_subtotal_minor)), stackable: p.stackable, priority: String(p.priority), is_active: p.is_active, starts_at: p.starts_at?.slice(0, 16) ?? "", ends_at: p.ends_at?.slice(0, 16) ?? "" })}><Pencil className="h-4 w-4" /></button>
-                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await deletePromotion(p.id); router.refresh(); })}><Trash2 className="h-4 w-4" /></button>
+                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await deletePromotion(p.id); router.refresh(); toast("Promotion deleted"); })}><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}
@@ -118,7 +120,7 @@ export function PromotionsManager({ promotions, banners }: { promotions: Promoti
                   <td className="px-4 py-2">{(b as Banner & { is_active?: boolean }).is_active === false ? "No" : "Yes"}</td>
                   <td className="px-4 py-2 text-right">
                     <button className="mr-3 text-ink-soft hover:text-ink" onClick={() => setBanner({ id: b.id, title: b.title, image_url: b.image_url ?? "", link_url: b.link_url ?? "", placement: b.placement as Banner["placement"], position: String(b.position), is_active: true })}><Pencil className="h-4 w-4" /></button>
-                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await deleteBanner(b.id); router.refresh(); })}><Trash2 className="h-4 w-4" /></button>
+                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await deleteBanner(b.id); router.refresh(); toast("Banner deleted"); })}><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}

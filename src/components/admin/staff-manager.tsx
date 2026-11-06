@@ -5,16 +5,17 @@ import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { inviteStaff, setStaff, removeStaff, ALL_PERMISSIONS } from "@/lib/admin/staff-actions";
+import { useToast } from "@/components/admin/toast";
 
 type Row = { id: string; role: "admin" | "staff"; permissions: string[]; email: string; self: boolean };
 
 export function StaffManager({ staff }: { staff: Row[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [pending, start] = useTransition();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "staff">("staff");
   const [perms, setPerms] = useState<string[]>(["orders:write"]);
-  const [msg, setMsg] = useState<string | null>(null);
 
   function togglePerm(p: string) {
     setPerms((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]));
@@ -40,11 +41,10 @@ export function StaffManager({ staff }: { staff: Row[] }) {
           </div>
         )}
         <div className="mt-4 flex items-center gap-3">
-          <Button size="sm" disabled={pending} onClick={() => { setMsg(null); start(async () => {
+          <Button size="sm" disabled={pending} onClick={() => { start(async () => {
             const res = await inviteStaff(email, role, perms);
-            if (res.ok) { setEmail(""); router.refresh(); setMsg("Access granted"); } else setMsg(res.error ?? "Failed");
+            if (res.ok) { setEmail(""); router.refresh(); toast("Access granted"); } else toast(res.error ?? "Failed", "error");
           }); }}>Grant access</Button>
-          {msg && <span className="text-sm text-ink-soft">{msg}</span>}
         </div>
       </div>
 
@@ -56,13 +56,13 @@ export function StaffManager({ staff }: { staff: Row[] }) {
               <tr key={s.id} className="border-t border-line align-top">
                 <td className="px-4 py-3">{s.email}{s.self && <span className="ml-2 text-xs text-ink-soft">(you)</span>}</td>
                 <td className="px-4 py-3">
-                  <select defaultValue={s.role} disabled={pending} onChange={(e) => start(async () => { await setStaff(s.id, e.target.value as "admin" | "staff", s.permissions); router.refresh(); })} className="rounded-lg border border-line bg-paper px-2 py-1">
+                  <select defaultValue={s.role} disabled={pending} onChange={(e) => start(async () => { await setStaff(s.id, e.target.value as "admin" | "staff", s.permissions); router.refresh(); toast("Role updated"); })} className="rounded-lg border border-line bg-paper px-2 py-1">
                     <option value="staff">Staff</option><option value="admin">Admin</option>
                   </select>
                 </td>
                 <td className="px-4 py-3 text-xs text-ink-soft">{s.role === "admin" ? "All" : s.permissions.join(", ") || "—"}</td>
                 <td className="px-4 py-3 text-right">
-                  {!s.self && <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await removeStaff(s.id); router.refresh(); })}><Trash2 className="h-4 w-4" /></button>}
+                  {!s.self && <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await removeStaff(s.id); router.refresh(); toast("Access removed"); })}><Trash2 className="h-4 w-4" /></button>}
                 </td>
               </tr>
             ))}

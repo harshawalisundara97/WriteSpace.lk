@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2, Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { saveProduct, uploadProductImage } from "@/lib/admin/product-actions";
+import { useToast } from "@/components/admin/toast";
 import { toMinor, toMajor } from "@/lib/pricing/money";
 import type { Category, ProductWithVariants } from "@/lib/types";
 
@@ -18,6 +19,7 @@ function slugify(s: string) {
 
 export function ProductForm({ product, categories }: { product: ProductWithVariants | null; categories: Category[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +64,7 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
     const res = await uploadProductImage(fd);
     setUploading(false);
     if (res.ok && res.url) setImages((imgs) => [...imgs, { url: res.url!, alt: name }]);
-    else setError(res.error ?? "Upload failed");
+    else { setError(res.error ?? "Upload failed"); toast(res.error ?? "Upload failed", "error"); }
   }
 
   function submit() {
@@ -84,8 +86,8 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
     };
     start(async () => {
       const res = await saveProduct(payload);
-      if (res.ok) router.push("/admin/products");
-      else setError(res.error ?? "Save failed");
+      if (res.ok) { toast("Product saved"); router.push("/admin/products"); }
+      else { setError(res.error ?? "Save failed"); toast(res.error ?? "Save failed", "error"); }
     });
   }
 

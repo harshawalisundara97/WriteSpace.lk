@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { updateSettings } from "@/lib/admin/settings-actions";
+import { useToast } from "@/components/admin/toast";
 import { toMinor, toMajor } from "@/lib/pricing/money";
 
 type S = {
@@ -11,8 +12,8 @@ type S = {
 };
 
 export function SettingsForm({ initial }: { initial: S }) {
+  const toast = useToast();
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<string | null>(null);
   const [storeName, setStoreName] = useState(initial.store_name);
   const [currency, setCurrency] = useState(initial.currency);
   const [shipping, setShipping] = useState(String(toMajor(initial.flat_shipping_minor)));
@@ -21,7 +22,6 @@ export function SettingsForm({ initial }: { initial: S }) {
   const [email, setEmail] = useState(initial.support_email ?? "");
 
   function save() {
-    setMsg(null);
     start(async () => {
       const res = await updateSettings({
         store_name: storeName, currency: currency.toUpperCase(),
@@ -30,7 +30,7 @@ export function SettingsForm({ initial }: { initial: S }) {
         tax_rate_bps: Math.round(Number(taxPct || 0) * 100),
         support_email: email || "",
       });
-      setMsg(res.ok ? "Saved" : res.error ?? "Failed");
+      toast(res.ok ? "Settings saved" : res.error ?? "Could not save", res.ok ? "success" : "error");
     });
   }
 
@@ -42,10 +42,7 @@ export function SettingsForm({ initial }: { initial: S }) {
       <Inp label="Free shipping over (LKR, blank = never)" value={freeThreshold} onChange={setFreeThreshold} type="number" />
       <Inp label="Tax rate (%)" value={taxPct} onChange={setTaxPct} type="number" />
       <Inp label="Support email" value={email} onChange={setEmail} type="email" />
-      <div className="flex items-center gap-3">
-        <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save settings"}</Button>
-        {msg && <span className="text-sm text-ink-soft">{msg}</span>}
-      </div>
+      <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save settings"}</Button>
     </div>
   );
 }
