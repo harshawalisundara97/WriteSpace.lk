@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ShoppingBag, Check, Eye } from "lucide-react";
+import { ShoppingBag, Check, Eye, Heart } from "lucide-react";
 import { useState } from "react";
 import type { ProductWithVariants } from "@/lib/types";
 import { formatMoney } from "@/lib/pricing/money";
 import { useCart } from "@/components/cart/cart-provider";
 import { useQuickView } from "@/components/store/quick-view";
+import { useWishlist } from "@/components/store/wishlist-provider";
 import { cn } from "@/lib/utils";
 
 const GRADIENTS = [
@@ -27,6 +28,7 @@ function hashIndex(id: string, mod: number) {
 export function ProductCard({ product, index = 0 }: { product: ProductWithVariants; index?: number }) {
   const cart = useCart();
   const quickView = useQuickView();
+  const wishlist = useWishlist();
   const [justAdded, setJustAdded] = useState(false);
 
   const variants = product.product_variants ?? [];
@@ -41,6 +43,14 @@ export function ProductCard({ product, index = 0 }: { product: ProductWithVarian
   const currency = primary?.currency ?? "LKR";
   const img = product.images?.[0];
   const grad = GRADIENTS[hashIndex(product.id, GRADIENTS.length)];
+
+  const wishItem = {
+    productId: product.id, slug: product.slug, name: product.name, brand: product.brand,
+    variantId: primary?.id ?? null, price_minor: price, compare_at_minor: compareAt, currency,
+    imageUrl: img?.url ?? null,
+  };
+  const saved = wishlist.has(product.id);
+  function toggleWish(e: React.MouseEvent) { e.preventDefault(); wishlist.toggle(wishItem); }
 
   async function quickAdd(e: React.MouseEvent) {
     e.preventDefault();
@@ -83,6 +93,14 @@ export function ProductCard({ product, index = 0 }: { product: ProductWithVarian
             {lowStock && <span className="rounded-full bg-gold px-2.5 py-1 text-xs font-semibold text-ink shadow-card">Only {available} left</span>}
             {soldOut && <span className="rounded-full bg-ink/80 px-2.5 py-1 text-xs font-semibold text-paper">Sold out</span>}
           </div>
+
+          <button
+            onClick={toggleWish}
+            aria-label={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name}`}
+            className={cn("absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-paper/90 shadow-card backdrop-blur transition-colors", saved ? "text-accent" : "text-ink/70 hover:text-accent")}
+          >
+            <Heart className={cn("h-5 w-5", saved && "fill-current")} />
+          </button>
 
           <button
             onClick={(e) => { e.preventDefault(); quickView.open(product); }}

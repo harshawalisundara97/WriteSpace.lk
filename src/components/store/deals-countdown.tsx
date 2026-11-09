@@ -22,7 +22,7 @@ export function DealsCountdown({ endsAt }: { endsAt: string }) {
     <div className="flex items-center gap-1.5 font-display text-sm font-semibold tabular-nums">
       {[t.h, t.m, t.s].map((v, i) => (
         <span key={i} className="flex items-center gap-1.5">
-          <span className="rounded-lg bg-ink px-2 py-1 text-paper">{pad(v)}</span>
+          <span suppressHydrationWarning className="rounded-lg bg-ink px-2 py-1 text-paper">{pad(v)}</span>
           {i < 2 && <span className="text-ink-soft">:</span>}
         </span>
       ))}

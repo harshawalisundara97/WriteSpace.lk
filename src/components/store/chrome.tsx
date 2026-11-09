@@ -6,6 +6,7 @@ import { Header } from "@/components/store/header";
 import { SiteFooter } from "@/components/store/site-footer";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { QuickViewProvider } from "@/components/store/quick-view";
+import { WishlistProvider } from "@/components/store/wishlist-provider";
 import type { Category } from "@/lib/types";
 
 // Storefront chrome (header/footer/cart). Hidden on admin where a dedicated
@@ -15,11 +16,13 @@ export function Chrome({ categories, children }: { categories: Category[]; child
   const bare = pathname.startsWith("/admin");
   if (bare) return <>{children}</>;
   return (
+    <WishlistProvider>
     <QuickViewProvider>
       <Header categories={categories} />
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <CartDrawer />
     </QuickViewProvider>
+    </WishlistProvider>
   );
 }

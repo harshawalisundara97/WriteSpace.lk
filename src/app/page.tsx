@@ -7,6 +7,10 @@ import {
   getActiveBanners, getActivePromotions, getCollectionProducts,
   getFeaturedCategories,
 } from "@/lib/catalog/queries";
+import { StatsBand } from "@/components/store/home/stats-band";
+import { Testimonials } from "@/components/store/home/testimonials";
+import { BrandStory } from "@/components/store/home/brand-story";
+import { Newsletter } from "@/components/store/home/newsletter";
 
 export const revalidate = 60;
 
@@ -50,6 +54,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <StatsBand />
+
       {/* Deals of the day */}
       {deals.length > 0 && (
         <section className="ws-container mt-16">
@@ -79,6 +85,10 @@ export default async function HomePage() {
           <ProductGrid products={bts} />
         </section>
       )}
+
+      <BrandStory />
+      <Testimonials />
+      <Newsletter />
     </>
   );
 }

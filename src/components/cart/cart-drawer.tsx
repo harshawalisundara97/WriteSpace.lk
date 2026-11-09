@@ -37,6 +37,9 @@ export function CartDrawer() {
   function applyCode() {
     startTransition(async () => { await setPromoCode(codeInput || null); await reload(); });
   }
+  function addCross(variantId: string) {
+    startTransition(async () => { await cart.add(variantId, 1, { open: false }); await reload(); });
+  }
 
   const lines = summary?.lines ?? [];
   const totals = summary?.totals;
@@ -74,12 +77,10 @@ export function CartDrawer() {
 
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {lines.length === 0 ? (
-                <div className="grid h-full place-items-center text-center text-ink-soft">
-                  <div>
-                    <p className="font-medium text-ink">Your cart is empty</p>
-                    <p className="mt-1 text-sm">Find something lovely to write with.</p>
-                    <Button className="mt-4" variant="outline" onClick={cart.close}>Browse products</Button>
-                  </div>
+                <div className="py-8 text-center text-ink-soft">
+                  <p className="font-medium text-ink">Your cart is empty</p>
+                  <p className="mt-1 text-sm">Find something lovely to write with.</p>
+                  <Button className="mt-4" variant="outline" onClick={cart.close}>Browse products</Button>
                 </div>
               ) : (
                 <ul className="space-y-4">
@@ -108,6 +109,31 @@ export function CartDrawer() {
                     ))}
                   </AnimatePresence>
                 </ul>
+              )}
+
+              {summary && summary.crossSell.length > 0 && (
+                <div className="mt-6">
+                  <p className="mb-3 text-sm font-medium">You might also like</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {summary.crossSell.map((c) => (
+                      <div key={c.productId}>
+                        <Link href={`/products/${c.slug}`} onClick={cart.close} className="block">
+                          <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-gradient-to-br from-paper-2 to-[#e8ded0]"
+                            style={c.imageUrl ? { backgroundImage: `url(${c.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+                            {!c.imageUrl && <span className="grid h-full place-items-center font-display text-2xl text-ink/30">{c.name.charAt(0)}</span>}
+                          </div>
+                        </Link>
+                        <p className="mt-1.5 line-clamp-1 text-xs font-medium">{c.name}</p>
+                        <div className="mt-0.5 flex items-center justify-between">
+                          <span className="text-xs text-ink-soft">{formatMoney(c.price_minor, c.currency)}</span>
+                          {c.variantId && (
+                            <button onClick={() => addCross(c.variantId!)} disabled={pending} aria-label={`Add ${c.name}`} className="grid h-6 w-6 place-items-center rounded-full bg-ink text-paper hover:bg-accent disabled:opacity-50"><Plus className="h-3.5 w-3.5" /></button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 

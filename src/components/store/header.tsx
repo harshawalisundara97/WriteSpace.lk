@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, Search, Menu, X } from "lucide-react";
+import { ShoppingBag, Search, Menu, X, Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useCart } from "@/components/cart/cart-provider";
+import { useWishlist } from "@/components/store/wishlist-provider";
 import { SearchBox } from "@/components/store/search-box";
 import type { Category } from "@/lib/types";
 
 export function Header({ categories }: { categories: Category[] }) {
   const cart = useCart();
+  const wishlist = useWishlist();
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const topCats = categories.filter((c) => !c.parent_id);
@@ -51,6 +53,10 @@ export function Header({ categories }: { categories: Category[] }) {
             <span className="hidden text-sm sm:inline">Search</span>
             <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-xs sm:inline">⌘K</kbd>
           </button>
+          <Link href="/wishlist" aria-label="Wishlist" className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-paper-2">
+            <Heart className="h-5 w-5" />
+            {wishlist.count > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-xs font-semibold text-paper">{wishlist.count}</span>}
+          </Link>
           <button aria-label="Cart" data-cart-icon onClick={cart.open} className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-paper-2">
             <ShoppingBag className="h-5 w-5" />
             <AnimatePresence>
