@@ -42,7 +42,9 @@ export function PdpBuy({ variants, currency }: { variants: V[]; currency: string
   const pctOff = onSale ? Math.round((1 - selected.price_minor / selected.compare_at_minor!) * 100) : 0;
   const hasColors = active.some((v) => colorOf(v));
 
-  async function add() {
+  async function add(e: React.MouseEvent) {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    cart.fly({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     const res = await cart.add(selected.id, qty);
     if (res.ok) { setAdded(true); setTimeout(() => setAdded(false), 1600); }
   }

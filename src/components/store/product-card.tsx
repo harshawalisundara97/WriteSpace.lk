@@ -45,7 +45,9 @@ export function ProductCard({ product, index = 0 }: { product: ProductWithVarian
   async function quickAdd(e: React.MouseEvent) {
     e.preventDefault();
     if (!primary || soldOut) return;
-    const res = await cart.add(primary.id, 1);
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    cart.fly({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    const res = await cart.add(primary.id, 1, { open: false });
     if (res.ok) {
       setJustAdded(true);
       setTimeout(() => setJustAdded(false), 1400);

@@ -51,7 +51,7 @@ export function Header({ categories }: { categories: Category[] }) {
             <span className="hidden text-sm sm:inline">Search</span>
             <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-xs sm:inline">⌘K</kbd>
           </button>
-          <button aria-label="Cart" onClick={cart.open} className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-paper-2">
+          <button aria-label="Cart" data-cart-icon onClick={cart.open} className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-paper-2">
             <ShoppingBag className="h-5 w-5" />
             <AnimatePresence>
               {cart.count > 0 && (
