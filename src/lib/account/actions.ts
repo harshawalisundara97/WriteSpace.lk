@@ -24,3 +24,14 @@ export async function reorder(orderId: string): Promise<{ ok: boolean; added: nu
   }
   return { ok: true, added };
 }
+
+export async function updateProfile(fullName: string, phone: string): Promise<{ ok: boolean; error?: string }> {
+  const { hasSupabase } = await import("@/lib/env");
+  if (!hasSupabase()) return { ok: false, error: "Demo mode — connect Supabase to save your profile." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Please sign in" };
+  const { error } = await supabase.from("customers").update({ full_name: fullName || null, phone: phone || null }).eq("id", user.id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}

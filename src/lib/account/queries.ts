@@ -1,8 +1,11 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabase } from "@/lib/env";
+import { demoAdminOrderRows, demoAdminOrder } from "@/lib/demo/data";
 
 // Uses the user-scoped client; RLS limits results to the signed-in customer.
 export async function getMyOrders() {
+  if (!hasSupabase()) return demoAdminOrderRows();
   const supabase = await createClient();
   const { data } = await supabase
     .from("orders")
@@ -12,6 +15,10 @@ export async function getMyOrders() {
 }
 
 export async function getMyOrder(id: string) {
+  if (!hasSupabase()) {
+    const d = demoAdminOrder(id);
+    return d ? { order: d.order, items: d.items } : null;
+  }
   const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")

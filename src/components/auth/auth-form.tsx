@@ -50,6 +50,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <span className="mb-1 block text-sm text-ink-soft">Password</span>
           <input name="password" type="password" required minLength={8} className="h-11 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:ring-2 focus:ring-brand/30" />
         </label>
+        {mode === "login" && <div className="text-right"><Link href="/forgot-password" className="text-sm text-accent hover:underline">Forgot password?</Link></div>}
         {error && <p className="text-sm text-accent">{error}</p>}
         <Button type="submit" size="lg" className="w-full" disabled={loading}>
           {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}

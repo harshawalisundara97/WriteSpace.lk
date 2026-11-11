@@ -15,7 +15,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const addr = order.shipping_address as Record<string, string> | null;
 
   return (
-    <div className="ws-container max-w-3xl py-10">
+    <div className="max-w-3xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold">{order.order_number}</h1>

@@ -238,3 +238,11 @@ export function demoAdminOrder(id: string) {
   if (!o) return null;
   return { order: o, items: o.items, payment: o.payment, refunds: [] as unknown[], activity: o.activity };
 }
+
+// ---- demo signed-in user (so account pages are viewable without a backend) ----
+export const demoUser = {
+  id: "demo-user",
+  email: "demo@writespace.lk",
+  full_name: "Demo Shopper",
+  phone: "+94 77 000 0000",
+};
