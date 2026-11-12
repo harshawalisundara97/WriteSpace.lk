@@ -49,4 +49,4 @@ pages, linked from the footer on every page.
 **Notes**
 - Pages are static (no data fetch). Contact details in the footer come from store settings; a dedicated Contact page with a form is TASK-003.
 
-**Commit:** `3842fca`
+**Commit:** `2c31aba`
