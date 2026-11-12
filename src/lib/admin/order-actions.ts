@@ -10,7 +10,9 @@ import type { OrderStatus } from "@/lib/types";
 export async function transitionOrder(orderId: string, to: OrderStatus): Promise<{ ok: boolean; error?: string }> {
   const ctx = await requirePerm("orders:write");
   const db = createAdminClient();
-  const { data: order } = await db.from("orders").select("status").eq("id", orderId).maybeSingle();
+  const { data: order } = await db
+    .from("orders").select("status,order_number,email,total_minor,currency,tracking_number")
+    .eq("id", orderId).maybeSingle();
   if (!order) return { ok: false, error: "Order not found" };
   try {
     assertTransition(order.status as OrderStatus, to);
@@ -22,6 +24,17 @@ export async function transitionOrder(orderId: string, to: OrderStatus): Promise
     actor: ctx.userId, action: "order.transition", entity: "orders", entity_id: orderId,
     before: { status: order.status }, after: { status: to },
   });
+
+  // Notify the customer when the order ships.
+  if (to === "shipped" && order.email) {
+    const { sendOrderShipped } = await import("@/lib/email/order");
+    await sendOrderShipped({
+      to: order.email, orderNumber: order.order_number,
+      totalMinor: order.total_minor, currency: order.currency,
+      trackingNumber: order.tracking_number,
+    });
+  }
+
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   return { ok: true };
@@ -50,7 +63,7 @@ export async function createRefund(input: RefundInputForm): Promise<{ ok: boolea
   const db = createAdminClient();
 
   const { data: order } = await db
-    .from("orders").select("id,status,total_minor,currency").eq("id", input.orderId).maybeSingle();
+    .from("orders").select("id,status,total_minor,currency,order_number,email").eq("id", input.orderId).maybeSingle();
   if (!order) return { ok: false, error: "Order not found" };
   if (input.amountMinor <= 0 || input.amountMinor > order.total_minor) {
     return { ok: false, error: "Refund amount is out of range" };
@@ -100,6 +113,15 @@ export async function createRefund(input: RefundInputForm): Promise<{ ok: boolea
     actor: ctx.userId, action: "order.refund", entity: "orders", entity_id: order.id,
     after: { amount_minor: input.amountMinor, restock: input.restock, provider_refund_id: providerRefundId, full: isFull },
   });
+
+  // Notify the customer of the refund.
+  if (order.email) {
+    const { sendOrderRefunded } = await import("@/lib/email/order");
+    await sendOrderRefunded({
+      to: order.email, orderNumber: order.order_number,
+      totalMinor: order.total_minor, currency: order.currency, refundMinor: input.amountMinor,
+    });
+  }
 
   revalidatePath(`/admin/orders/${order.id}`);
   revalidatePath("/admin/orders");
