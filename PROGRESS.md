@@ -1,7 +1,7 @@
 # WriteSpace.lk — Progress
 
 > Rolling status log. Update after each development session.
-> **Last updated:** 2026-11-12 · **Branch:** `main` · **Last commit:** `9634277` (Add docs/PROJECT_MAP.md repository map)
+> **Last updated:** 2026-11-12 · **Branch:** `main` · **Last commit:** `3842fca` (feat(customer): add policy pages and content-page shell — TASK-001)
 > "Verified" = built + browser-checked this session. "Committed" = in Git history but not re-verified here.
 > See [docs/PROJECT_MAP.md](docs/PROJECT_MAP.md) (structure) and [ARCHITECTURE.md](ARCHITECTURE.md) (design).
 
@@ -25,6 +25,7 @@ Verified this session (built, typecheck + `next build` pass, browser-checked):
 - Transactional **order emails** (confirmation/shipped/refunded) + `/api/email-preview` (`c232d97`)
 - Server-backed **wishlist** with cross-device sync (`d94060d`)
 - `docs/PROJECT_MAP.md` (`9634277`)
+- **Customer content pages**: Shipping, Returns & Refunds, Privacy, Terms + shared `ContentPage` shell + footer legal links (TASK-001, `3842fca`)
 
 Committed earlier (not re-verified this session): checkout/payments, accounts,
 admin dashboard, demo mode, PDP/reviews/quick-view/search, faceted filters,
@@ -33,8 +34,8 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 
 ## Current work
 
-- `docs/PROJECT_MAP.md` — **uncommitted** edits (verification corrections: middleware
-  also gates `/account`; `next dev` not Turbopack; `.env.example` tracked vs `.env` gitignored).
+- TASK-001 (content shell + policy pages) — **done & committed (`3842fca`).** Next: TASK-002 (About page).
+  See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap; next up is TASK-002 (About page).
 
 ## Pending tasks
 

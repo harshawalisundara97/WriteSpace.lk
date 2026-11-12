@@ -64,8 +64,16 @@ export function SiteFooter({ info }: { info?: FooterInfo }) {
           )}
         </div>
       </div>
-      <div className="border-t border-line py-6 text-center text-xs text-ink-soft">
-        © {new Date().getFullYear()} {i.store_name || "WriteSpace.lk"} — All prices in LKR.
+      <div className="border-t border-line">
+        <div className="ws-container flex flex-col items-center justify-between gap-3 py-6 text-xs text-ink-soft sm:flex-row">
+          <p>© {new Date().getFullYear()} {i.store_name || "WriteSpace.lk"} — All prices in LKR.</p>
+          <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link href="/shipping" className="hover:text-accent">Shipping</Link>
+            <Link href="/returns" className="hover:text-accent">Returns &amp; Refunds</Link>
+            <Link href="/privacy" className="hover:text-accent">Privacy</Link>
+            <Link href="/terms" className="hover:text-accent">Terms</Link>
+          </nav>
+        </div>
       </div>
     </footer>
   );
