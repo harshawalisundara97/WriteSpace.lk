@@ -12,7 +12,7 @@ Status legend: ☐ pending · ◐ in progress · ☑ completed.
 | ID | Objective | Depends on | Status |
 |---|---|---|---|
 | TASK-001 | Content-page shell + policy pages (Shipping, Returns & Refunds, Privacy, Terms) + footer links | — | ☑ |
-| TASK-002 | About page | 001 | ☐ |
+| TASK-002 | About page | 001 | ☑ |
 | TASK-003 | Contact page + enquiry form (Resend) | 001 | ☐ |
 | TASK-004 | FAQ page (stationery-focused) | 001 | ☐ |
 | TASK-005 | Stationery product specifications (GSM, paper size, ruling, sheet count, colour) — schema + PDP spec table | — | ☐ |
@@ -50,3 +50,32 @@ pages, linked from the footer on every page.
 - Pages are static (no data fetch). Contact details in the footer come from store settings; a dedicated Contact page with a form is TASK-003.
 
 **Commit:** `2c31aba`
+
+
+---
+
+## TASK-002 — About page ☑
+
+**Objective:** Add a static About page using the TASK-001 content shell, linked
+from the footer on every page.
+
+**Files added**
+- `src/app/about/page.tsx` — About page (`ContentPage` + sections: Who we are, What we stand for, Delivered across Sri Lanka, Browse & get in touch).
+
+**Files modified**
+- `src/components/store/site-footer.tsx` — added `About` to the bottom-bar nav (relabelled `aria-label` from `Legal` to `Footer` since it now holds About + legal links).
+
+**Acceptance criteria** (all met)
+- `/about` renders with storefront chrome and consistent typography.
+- Footer links to `/about` on every storefront page.
+- Per-page metadata (title template + description + canonical `/about`).
+
+**Tests performed**
+- `npm run typecheck` — pass.
+- `npm run build` — pass; `/about` prerendered static (○).
+- Browser check: `/about` renders, title `About us · WriteSpace.lk`, footer About link resolves, content + internal links present. (A hydration notice seen in the already-running dev server was stale SSR from a long-lived dev process that had not reloaded the footer edit — not present in the production build; a dev restart clears it.)
+
+**Notes**
+- Static page, no data fetch. Contact CTA points to the footer details; the dedicated Contact page with a form is TASK-003.
+
+**Commit:** _pending_

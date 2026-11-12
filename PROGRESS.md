@@ -26,6 +26,7 @@ Verified this session (built, typecheck + `next build` pass, browser-checked):
 - Server-backed **wishlist** with cross-device sync (`d94060d`)
 - `docs/PROJECT_MAP.md` (`9634277`)
 - **Customer content pages**: Shipping, Returns & Refunds, Privacy, Terms + shared `ContentPage` shell + footer legal links (TASK-001, `2c31aba`)
+- **About page** (`/about`) using the content shell + footer About link (TASK-002, _commit pending_)
 
 Committed earlier (not re-verified this session): checkout/payments, accounts,
 admin dashboard, demo mode, PDP/reviews/quick-view/search, faceted filters,
@@ -34,8 +35,8 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 
 ## Current work
 
-- TASK-001 (content shell + policy pages) — **done & committed (`2c31aba`).** Next: TASK-002 (About page).
-  See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap; next up is TASK-002 (About page).
+- TASK-002 (About page) — **done this session, commit pending.** Next: TASK-003 (Contact page + enquiry form).
+  See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap; next up is TASK-003 (Contact page + Resend enquiry form).
 
 ## Pending tasks
 
