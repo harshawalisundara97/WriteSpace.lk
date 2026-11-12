@@ -1,7 +1,7 @@
 # WriteSpace.lk — Progress
 
 > Rolling status log. Update after each development session.
-> **Last updated:** 2026-11-12 · **Branch:** `main` · **Last commit:** `2c31aba` (feat(customer): add policy pages and content-page shell — TASK-001)
+> **Last updated:** 2026-11-12 · **Branch:** `main` · **Last commit:** `2d8518d` (feat(customer): add About page + footer link — TASK-002)
 > "Verified" = built + browser-checked this session. "Committed" = in Git history but not re-verified here.
 > See [docs/PROJECT_MAP.md](docs/PROJECT_MAP.md) (structure) and [ARCHITECTURE.md](ARCHITECTURE.md) (design).
 
@@ -26,7 +26,7 @@ Verified this session (built, typecheck + `next build` pass, browser-checked):
 - Server-backed **wishlist** with cross-device sync (`d94060d`)
 - `docs/PROJECT_MAP.md` (`9634277`)
 - **Customer content pages**: Shipping, Returns & Refunds, Privacy, Terms + shared `ContentPage` shell + footer legal links (TASK-001, `2c31aba`)
-- **About page** (`/about`) using the content shell + footer About link (TASK-002, _commit pending_)
+- **About page** (`/about`) using the content shell + footer About link (TASK-002, `2d8518d`)
 
 Committed earlier (not re-verified this session): checkout/payments, accounts,
 admin dashboard, demo mode, PDP/reviews/quick-view/search, faceted filters,
@@ -35,7 +35,7 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 
 ## Current work
 
-- TASK-002 (About page) — **done this session, commit pending.** Next: TASK-003 (Contact page + enquiry form).
+- TASK-002 (About page) — **done & committed (`2d8518d`).** Next: TASK-003 (Contact page + enquiry form).
   See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap; next up is TASK-003 (Contact page + Resend enquiry form).
 
 ## Pending tasks

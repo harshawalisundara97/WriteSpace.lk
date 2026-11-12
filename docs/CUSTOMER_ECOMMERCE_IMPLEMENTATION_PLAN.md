@@ -78,4 +78,4 @@ from the footer on every page.
 **Notes**
 - Static page, no data fetch. Contact CTA points to the footer details; the dedicated Contact page with a form is TASK-003.
 
-**Commit:** _pending_
+**Commit:** `2d8518d`
