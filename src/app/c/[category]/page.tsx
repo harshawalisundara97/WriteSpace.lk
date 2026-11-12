@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { CatalogFilters } from "@/components/store/catalog-filters";
 import { ProductGrid } from "@/components/store/product-grid";
 import { getAllCategories, getFacets, getProducts } from "@/lib/catalog/queries";
@@ -6,6 +7,20 @@ import { getAllCategories, getFacets, getProducts } from "@/lib/catalog/queries"
 export const revalidate = 60;
 
 type SP = Record<string, string | string[] | undefined>;
+
+export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
+  const { category } = await params;
+  const categories = await getAllCategories();
+  const cat = categories.find((c) => c.slug === category);
+  if (!cat) return { title: "Not found" };
+  const description = cat.description ?? `Shop ${cat.name} at WriteSpace.lk — stationery for kids & adults, delivered across Sri Lanka.`;
+  return {
+    title: cat.name,
+    description,
+    alternates: { canonical: `/c/${cat.slug}` },
+    openGraph: { title: `${cat.name} · WriteSpace.lk`, description, type: "website" },
+  };
+}
 
 export default async function CategoryPage({
   params, searchParams,

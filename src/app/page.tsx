@@ -27,8 +27,31 @@ export default async function HomePage() {
 
   const dealPromo = promotions.find((p) => p.name.toLowerCase().includes("deal of the day") && p.ends_at);
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "WriteSpace.lk",
+      url: siteUrl,
+      description: "Stationery for kids & adults — pens, notebooks, art supplies and desk goods, delivered across Sri Lanka.",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "WriteSpace.lk",
+      url: siteUrl,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${siteUrl}/products?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Hero banners={heroBanners} />
 
       {promoStrip.length > 0 && (

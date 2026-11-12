@@ -236,7 +236,22 @@ export function demoAdminOrderRows() {
 export function demoAdminOrder(id: string) {
   const o = demoOrders.find((x) => x.id === id);
   if (!o) return null;
-  return { order: o, items: o.items, payment: o.payment, refunds: [] as unknown[], activity: o.activity };
+  return { order: o, items: o.items, payment: o.payment, refunds: demoRefunds.filter((r) => r.order_id === id), activity: o.activity };
+}
+
+export interface DemoRefund {
+  id: string; order_id: string; order_number: string; email: string;
+  amount_minor: number; currency: string; reason: string | null;
+  status: string; restocked: boolean; created_at: string;
+}
+
+export const demoRefunds: DemoRefund[] = [
+  { id: "rf1", order_id: "o2", order_number: "WS-20261104-2210", email: "dilshan@example.com", amount_minor: 42000, currency: "LKR", reason: "Minor scratch on lid — partial goodwill refund", status: "succeeded", restocked: false, created_at: d(1) },
+  { id: "rf2", order_id: "o1", order_number: "WS-20261106-1042", email: "nimali@example.com", amount_minor: 85000, currency: "LKR", reason: "One pen dried out — refunded item", status: "succeeded", restocked: true, created_at: d(0) },
+];
+
+export function demoAdminRefunds(): DemoRefund[] {
+  return [...demoRefunds].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
 // ---- demo signed-in user (so account pages are viewable without a backend) ----

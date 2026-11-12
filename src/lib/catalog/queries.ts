@@ -58,6 +58,29 @@ export async function getAllCategories(): Promise<Category[]> {
   return data ?? [];
 }
 
+export type SitemapEntry = { slug: string; lastModified?: string };
+
+export async function getSitemapEntries(): Promise<{ products: SitemapEntry[]; categories: SitemapEntry[]; collections: SitemapEntry[] }> {
+  if (!hasSupabase()) {
+    return {
+      products: demoProducts.map((p) => ({ slug: p.slug, lastModified: p.created_at })),
+      categories: demoCategories.map((c) => ({ slug: c.slug })),
+      collections: demoCollections.map((c) => ({ slug: c.slug })),
+    };
+  }
+  const supabase = await createClient();
+  const [{ data: products }, { data: categories }, { data: collections }] = await Promise.all([
+    supabase.from("products").select("slug,created_at").eq("status", "published"),
+    supabase.from("categories").select("slug"),
+    supabase.from("collections").select("slug"),
+  ]);
+  return {
+    products: (products ?? []).map((p: { slug: string; created_at: string | null }) => ({ slug: p.slug, lastModified: p.created_at ?? undefined })),
+    categories: (categories ?? []).map((c: { slug: string }) => ({ slug: c.slug })),
+    collections: (collections ?? []).map((c: { slug: string }) => ({ slug: c.slug })),
+  };
+}
+
 export async function getActiveBanners(placement?: string): Promise<Banner[]> {
   if (!hasSupabase()) return placement ? demoBanners.filter((b) => b.placement === placement) : demoBanners;
   const supabase = await createClient();

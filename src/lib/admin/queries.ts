@@ -114,3 +114,39 @@ export async function getAdminOrder(id: string) {
   ]);
   return { order, items: items ?? [], payment: payment ?? null, refunds: refunds ?? [], activity: activity ?? [] };
 }
+
+export interface AdminRefund {
+  id: string; order_id: string; order_number: string; email: string;
+  amount_minor: number; currency: string; reason: string | null;
+  status: string; restocked: boolean; created_at: string;
+}
+
+export async function getAdminRefunds(): Promise<AdminRefund[]> {
+  if (!hasSupabase()) {
+    const { demoAdminRefunds } = await import("@/lib/demo/data");
+    return demoAdminRefunds();
+  }
+  const db = createAdminClient();
+  const { data } = await db
+    .from("refunds")
+    .select("id,order_id,amount_minor,reason,status,restocked,created_at,order:orders(order_number,email,currency)")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  type Row = {
+    id: string; order_id: string; amount_minor: number; reason: string | null;
+    status: string; restocked: boolean; created_at: string;
+    order: { order_number: string | null; email: string | null; currency: string | null } | null;
+  };
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    order_id: r.order_id,
+    order_number: r.order?.order_number ?? "—",
+    email: r.order?.email ?? "—",
+    amount_minor: r.amount_minor,
+    currency: r.order?.currency ?? "LKR",
+    reason: r.reason,
+    status: r.status,
+    restocked: r.restocked,
+    created_at: r.created_at,
+  }));
+}
