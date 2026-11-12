@@ -727,6 +727,18 @@ insert into banners (title, image_url, link_url, placement, position, is_active,
   ('Free delivery over LKR 5,000',null,'/promotions','promo_strip',1,true,now(),now()+interval '365 days')
 on conflict do nothing;
 
+-- ========== 0006_wishlist ==========
+create table if not exists wishlists (
+  customer_id uuid not null references customers(id) on delete cascade,
+  product_id uuid not null references products(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (customer_id, product_id)
+);
+create index if not exists idx_wishlists_customer on wishlists(customer_id);
+alter table wishlists enable row level security;
+create policy wishlist_owner_all on wishlists for all
+  using (customer_id = auth.uid()) with check (customer_id = auth.uid());
+
 -- ========== make yourself an admin ==========
 -- AFTER you register an account in the app, run this (replace the email):
 -- insert into admin_users (id, role)

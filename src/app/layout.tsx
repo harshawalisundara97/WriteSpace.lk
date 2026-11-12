@@ -5,6 +5,8 @@ import { CartProvider } from "@/components/cart/cart-provider";
 import { Chrome } from "@/components/store/chrome";
 import { getAllCategories, getStoreSettings } from "@/lib/catalog/queries";
 import { getCartCount } from "@/lib/cart/actions";
+import { getWishlistItems } from "@/lib/account/wishlist";
+import { getCurrentUser } from "@/lib/auth/user";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const display = Fraunces({ variable: "--font-display", subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -33,14 +35,15 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
 };
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [categories, count, settings] = await Promise.all([getAllCategories(), getCartCount(), getStoreSettings()]);
+  const [categories, count, settings, wishlist, user] = await Promise.all([
+    getAllCategories(), getCartCount(), getStoreSettings(), getWishlistItems(), getCurrentUser(),
+  ]);
   return (
     <html lang="en" className={`${sans.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <CartProvider initialCount={count}>
-          <Chrome categories={categories} info={settings}>{children}</Chrome>
+          <Chrome categories={categories} info={settings} wishlist={wishlist} signedIn={!!user}>{children}</Chrome>
         </CartProvider>
       </body>
     </html>
