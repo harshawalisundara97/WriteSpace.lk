@@ -40,3 +40,25 @@ export async function getAdminCollections() {
   const { data } = await db.from("collections").select("*").order("position");
   return data ?? [];
 }
+
+export type AdminBanner = {
+  id: string;
+  title: string;
+  image_url: string | null;
+  link_url: string | null;
+  placement: string;
+  position: number;
+  is_active?: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+};
+
+export async function getAdminBanners(): Promise<AdminBanner[]> {
+  if (!hasSupabase()) {
+    const { demoBanners } = await import("@/lib/demo/data");
+    return demoBanners.map((b) => ({ ...b, is_active: true }));
+  }
+  const db = createAdminClient();
+  const { data } = await db.from("banners").select("*").order("placement").order("position");
+  return (data ?? []) as AdminBanner[];
+}

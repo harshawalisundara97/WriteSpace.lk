@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShoppingCart, Package, Boxes, FolderTree, Tag, Users, ScrollText, Settings, Shield, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, Boxes, FolderTree, Tag, Images, Users, ScrollText, Settings, Shield, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/types";
 
@@ -15,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/inventory", label: "Inventory", icon: Boxes, perm: "inventory:write" },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, perm: "products:write" },
   { href: "/admin/promotions", label: "Promotions", icon: Tag, perm: "promotions:write" },
+  { href: "/admin/banners", label: "Banners", icon: Images, perm: "promotions:write" },
   { href: "/admin/customers", label: "Customers", icon: Users, perm: "customers:write" },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText, adminOnly: true },
   { href: "/admin/staff", label: "Staff", icon: Shield, perm: "staff:write" },
