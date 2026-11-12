@@ -260,6 +260,41 @@ export function demoAdminRefunds(): DemoRefund[] {
   return [...demoRefunds].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }
 
+// ---- demo customers (so the admin customers views are viewable without a backend) ----
+export interface DemoCustomer {
+  id: string; email: string; full_name: string | null; phone: string | null;
+  is_blocked: boolean; created_at: string;
+}
+
+export const demoCustomers: DemoCustomer[] = [
+  { id: "cust1", email: "nimali@example.com", full_name: "Nimali Perera", phone: "+94 77 123 4567", is_blocked: false, created_at: d(30) },
+  { id: "cust2", email: "dilshan@example.com", full_name: "Dilshan Rodrigo", phone: "+94 71 987 6543", is_blocked: false, created_at: d(48) },
+  { id: "cust3", email: "ayesha@example.com", full_name: "Ayesha Khan", phone: "+94 76 222 3344", is_blocked: false, created_at: d(7) },
+  { id: "cust4", email: "demo@writespace.lk", full_name: "Demo Shopper", phone: "+94 77 000 0000", is_blocked: false, created_at: d(60) },
+];
+
+function demoCustomerStats(email: string) {
+  const mine = demoOrders.filter((o) => o.email === email);
+  const spent = mine.filter((o) => PAID.includes(o.status)).reduce((s, o) => s + o.total_minor, 0);
+  return { count: mine.length, spent };
+}
+
+export function demoAdminCustomers() {
+  return demoCustomers.map((c) => {
+    const { count, spent } = demoCustomerStats(c.email);
+    return { ...c, orders: count, spent };
+  });
+}
+
+export function demoAdminCustomer(id: string) {
+  const customer = demoCustomers.find((c) => c.id === id);
+  if (!customer) return null;
+  const orders = demoOrders
+    .filter((o) => o.email === customer.email)
+    .map((o) => ({ id: o.id, order_number: o.order_number, status: o.status, total_minor: o.total_minor, currency: o.currency, created_at: o.created_at }));
+  return { customer, orders };
+}
+
 // ---- demo signed-in user (so account pages are viewable without a backend) ----
 export const demoUser = {
   id: "demo-user",
