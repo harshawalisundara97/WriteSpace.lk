@@ -18,7 +18,7 @@ Stack: Next.js 16 (App Router, TypeScript strict) · Supabase (Postgres/Auth/Sto
 | `src/app/` | Routes (App Router): storefront, auth, `/admin`, `/account`, API handlers |
 | `src/components/` | UI by area: `store/`, `admin/`, `account/`, `cart/`, `checkout/`, `auth/`, `ui/` |
 | `src/lib/` | Server/business logic (see below) |
-| `src/middleware.ts` | Gates `/admin/*` + refreshes the Supabase session |
+| `src/middleware.ts` | Refreshes the Supabase session; gates `/admin/*` (requires an `admin_users` row) and `/account/*` (requires sign-in) |
 | `supabase/` | `migrations/` (0001–0006), `seed.sql`, and `setup.sql` (one-shot paste) |
 | `tests/` | `unit/` (Vitest), `e2e/` (Playwright) |
 | `public/` | Static SVGs |
@@ -70,14 +70,14 @@ Stack: Next.js 16 (App Router, TypeScript strict) · Supabase (Postgres/Auth/Sto
 | `eslint.config.mjs` | ESLint (eslint-config-next) |
 | `vitest.config.ts` | Unit test config |
 | `playwright.config.ts` | E2E config |
-| `.env` / `.env.example` | Supabase/Stripe/Resend keys, `NEXT_PUBLIC_SITE_URL` (gitignored) |
+| `.env.example` (tracked) / `.env` (gitignored) | Supabase/Stripe/Resend keys, `NEXT_PUBLIC_SITE_URL` |
 | `supabase/setup.sql` | One-shot schema + RLS + functions + seed for the Supabase SQL editor |
 
 ## Build and test commands
 
 | Command | What |
 |---|---|
-| `npm run dev` | Dev server (Turbopack) |
+| `npm run dev` | Dev server (`next dev`) |
 | `npm run build` | Production build |
 | `npm start` | Serve the production build |
 | `npm run typecheck` | `tsc --noEmit` |
