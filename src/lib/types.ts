@@ -1,4 +1,5 @@
 // Domain row types (hand-maintained; mirror supabase/migrations).
+import type { ProductSpecs } from "@/lib/catalog/specs";
 
 export type AgeGroup = "kids" | "adults" | "all";
 export type ProductStatus = "draft" | "published";
@@ -65,6 +66,7 @@ export interface Product {
   images: ProductImage[];
   seo_title: string | null;
   seo_description: string | null;
+  specs: ProductSpecs;
   created_at: string;
 }
 

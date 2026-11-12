@@ -23,6 +23,13 @@ export const productSchema = z.object({
   images: z.array(z.object({ url: z.string().url(), alt: z.string().optional() })).default([]),
   seo_title: z.string().max(200).optional().or(z.literal("")),
   seo_description: z.string().max(300).optional().or(z.literal("")),
+  specs: z.object({
+    gsm: z.number().int().min(0).max(1000).nullable().optional(),
+    paper_size: z.string().max(40).nullable().optional().or(z.literal("")),
+    ruling: z.string().max(40).nullable().optional().or(z.literal("")),
+    sheet_count: z.number().int().min(0).max(100000).nullable().optional(),
+    colour: z.string().max(60).nullable().optional().or(z.literal("")),
+  }).default({}),
   variants: z.array(variantSchema).min(1, "Add at least one variant"),
 });
 

@@ -69,6 +69,8 @@ export function SiteFooter({ info }: { info?: FooterInfo }) {
           <p>© {new Date().getFullYear()} {i.store_name || "WriteSpace.lk"} — All prices in LKR.</p>
           <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <Link href="/about" className="hover:text-accent">About</Link>
+            <Link href="/contact" className="hover:text-accent">Contact</Link>
+            <Link href="/faq" className="hover:text-accent">FAQ</Link>
             <Link href="/shipping" className="hover:text-accent">Shipping</Link>
             <Link href="/returns" className="hover:text-accent">Returns &amp; Refunds</Link>
             <Link href="/privacy" className="hover:text-accent">Privacy</Link>

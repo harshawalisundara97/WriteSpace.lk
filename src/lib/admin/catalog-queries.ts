@@ -5,7 +5,7 @@ import { hasSupabase } from "@/lib/env";
 import { demoProducts, demoCategories } from "@/lib/demo/data";
 
 const SELECT =
-  "id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,created_at," +
+  "id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,created_at," +
   "product_variants(id,product_id,sku,name,options,price_minor,compare_at_minor,currency,position,is_active," +
   "inventory(variant_id,on_hand,reserved,low_stock_threshold))";
 

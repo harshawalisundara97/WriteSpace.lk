@@ -27,6 +27,8 @@ Verified this session (built, typecheck + `next build` pass, browser-checked):
 - `docs/PROJECT_MAP.md` (`9634277`)
 - **Customer content pages**: Shipping, Returns & Refunds, Privacy, Terms + shared `ContentPage` shell + footer legal links (TASK-001, `2c31aba`)
 - **About page** (`/about`) using the content shell + footer About link (TASK-002, `2d8518d`)
+- **Contact page** (`/contact`) — content-shell page with store contact cards + enquiry form posting to `/api/contact`, emailed to the store inbox via Resend (`lib/email/enquiry.ts`), no-op in demo mode; footer Contact link (TASK-003, _commit pending_)
+- **FAQ page** (`/faq`) — stationery-focused Q/A (orders & payment, GSM/paper sizes/ruling/refills, delivery, returns) on the content shell + footer FAQ link (TASK-004, _commit pending_)
 
 Committed earlier (not re-verified this session): checkout/payments, accounts,
 admin dashboard, demo mode, PDP/reviews/quick-view/search, faceted filters,
@@ -35,8 +37,8 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 
 ## Current work
 
-- TASK-002 (About page) — **done & committed (`2d8518d`).** Next: TASK-003 (Contact page + enquiry form).
-  See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap; next up is TASK-003 (Contact page + Resend enquiry form).
+- TASK-004 (stationery-focused FAQ page) — **done & verified this session; commit pending.** TASK-003 (Contact page) is also still uncommitted from its session; both are in the working tree. Next: TASK-005 (stationery product specifications).
+  See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap.
 
 ## Pending tasks
 
