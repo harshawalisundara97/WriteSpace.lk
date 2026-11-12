@@ -29,3 +29,14 @@ export async function getAdminCategories(): Promise<Category[]> {
   const { data } = await db.from("categories").select("*").order("position");
   return (data ?? []) as Category[];
 }
+
+export async function getAdminCollections() {
+  const { hasSupabase } = await import("@/lib/env");
+  if (!hasSupabase()) {
+    const { demoCollections } = await import("@/lib/demo/data");
+    return demoCollections;
+  }
+  const db = createAdminClient();
+  const { data } = await db.from("collections").select("*").order("position");
+  return data ?? [];
+}
