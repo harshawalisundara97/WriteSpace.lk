@@ -334,6 +334,11 @@ create table store_settings (
   free_shipping_threshold_minor int,                -- null = never free
   tax_rate_bps int not null default 0,              -- basis points (0 = none)
   support_email text,
+  support_phone text,
+  whatsapp text,
+  address text,
+  instagram_url text,
+  facebook_url text,
   updated_at timestamptz not null default now()
 );
 insert into store_settings (id) values (1) on conflict do nothing;

@@ -40,6 +40,12 @@ export async function getStoreSettings() {
     tax_rate_bps: data?.tax_rate_bps ?? 0,
     currency: data?.currency ?? "LKR",
     store_name: data?.store_name ?? "WriteSpace.lk",
+    support_email: data?.support_email ?? null,
+    support_phone: data?.support_phone ?? null,
+    whatsapp: data?.whatsapp ?? null,
+    address: data?.address ?? null,
+    instagram_url: data?.instagram_url ?? null,
+    facebook_url: data?.facebook_url ?? null,
   };
 }
 

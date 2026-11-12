@@ -3,7 +3,7 @@ import { Geist, Fraunces } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/components/cart/cart-provider";
 import { Chrome } from "@/components/store/chrome";
-import { getAllCategories } from "@/lib/catalog/queries";
+import { getAllCategories, getStoreSettings } from "@/lib/catalog/queries";
 import { getCartCount } from "@/lib/cart/actions";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -35,12 +35,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [categories, count] = await Promise.all([getAllCategories(), getCartCount()]);
+  const [categories, count, settings] = await Promise.all([getAllCategories(), getCartCount(), getStoreSettings()]);
   return (
     <html lang="en" className={`${sans.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <CartProvider initialCount={count}>
-          <Chrome categories={categories}>{children}</Chrome>
+          <Chrome categories={categories} info={settings}>{children}</Chrome>
         </CartProvider>
       </body>
     </html>

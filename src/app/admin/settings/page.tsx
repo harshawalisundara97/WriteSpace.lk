@@ -13,6 +13,11 @@ export default async function AdminSettingsPage() {
     free_shipping_threshold_minor: data?.free_shipping_threshold_minor ?? null,
     tax_rate_bps: data?.tax_rate_bps ?? 0,
     support_email: data?.support_email ?? null,
+    support_phone: (data as { support_phone?: string | null })?.support_phone ?? null,
+    whatsapp: (data as { whatsapp?: string | null })?.whatsapp ?? null,
+    address: (data as { address?: string | null })?.address ?? null,
+    instagram_url: (data as { instagram_url?: string | null })?.instagram_url ?? null,
+    facebook_url: (data as { facebook_url?: string | null })?.facebook_url ?? null,
   };
   return (
     <div className="space-y-6">

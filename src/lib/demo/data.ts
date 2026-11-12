@@ -90,6 +90,12 @@ export const demoSettings = {
   tax_rate_bps: 0,
   currency: "LKR",
   store_name: "WriteSpace.lk",
+  support_email: "hello@writespace.lk",
+  support_phone: "+94 11 234 5678",
+  whatsapp: "+94 77 123 4567",
+  address: "128 Galle Road, Colombo 03, Sri Lanka",
+  instagram_url: "https://instagram.com/writespace.lk",
+  facebook_url: "https://facebook.com/writespace.lk",
 };
 
 // ---- admin demo helpers ----
