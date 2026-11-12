@@ -1,28 +1,33 @@
 # WriteSpace.lk — Working Rules (read first)
 
-Primary context: **this file + [PROGRESS.md](PROGRESS.md)**. Use
-[docs/PROJECT_MAP.md](docs/PROJECT_MAP.md) only when you need repo structure.
+Primary context: **this file + [PROGRESS.md](PROGRESS.md)** (current status). Use
+[docs/PROJECT_MAP.md](docs/PROJECT_MAP.md) only when repo structure is needed.
 Design/rationale: [ARCHITECTURE.md](ARCHITECTURE.md). Setup: [README.md](README.md).
 
-## Session management & token optimization (mandatory)
+## Task & conversation management (mandatory)
 
-1. **One task per session.** Handle one clearly defined task per conversation.
-   Don't auto-start unrelated work; avoid unnecessary exploration and repeated explanation.
-2. **On task completion:** (a) verify + run relevant targeted tests; (b) summarize changes briefly;
-   (c) update `PROGRESS.md` only if meaningful progress was made; (d) report modified files,
-   test results, remaining issues; (e) confirm whether the task is fully completed.
-3. **End every completed task** by telling the user:
-   "Task completed. Start a fresh Claude Code session using /clear before beginning the next unrelated task."
-   Then stop — no further exploring/reviewing/suggesting unless asked.
-4. **Context:** CLAUDE.md + PROGRESS.md are primary; PROJECT_MAP.md only for structure.
-   Don't re-read unchanged files, don't scan the whole repo for one task, avoid unnecessary
-   subagents/duplicate tool calls, keep output concise, don't repeat established info.
-5. **Preserve work:** never discard uncommitted changes; never modify unrelated files;
-   never commit/push/switch branches without explicit approval; preserve existing decisions/conventions.
-6. **Fresh sessions:** don't assume prior chat history. Read this file + PROGRESS.md, then
-   inspect only the files the new task needs.
-7. These rules apply to all future tasks here. Minimize token use while keeping quality,
-   correctness, and reliability.
+1. **One task per conversation.** Handle one development task at a time; don't continue with
+   unrelated work after it's done. Avoid unnecessary exploration, repeated explanation, duplicate analysis.
+2. **At task completion:** (1) verify the implementation; (2) run relevant targeted tests;
+   (3) update `PROGRESS.md` only when meaningful progress was made; (4) summarize modified files
+   + test results; (5) state clearly whether the task is complete; (6) give a short handoff
+   summary if further work is pending.
+3. **Conversation handoff** — after completing a task, tell the user:
+   "Task completed. You can start a new conversation within this same project for your next task.
+   Use the project documentation and relevant files to continue."
+   Do not automatically start another task.
+4. **Context efficiency.** CLAUDE.md is the primary instruction source; PROGRESS.md for status;
+   PROJECT_MAP.md only when necessary. Don't repeatedly scan the repo or re-read unchanged files
+   without reason; avoid unnecessary agents/tool calls; keep responses and terminal output concise;
+   don't repeat what the docs already say.
+5. **Preserve existing work.** Never discard uncommitted changes; don't modify unrelated files;
+   don't commit/push/switch branches without approval; preserve existing architecture and decisions.
+6. **New conversation behaviour.** Don't assume prior chat history. Use the project docs, identify
+   the requested task, inspect only the relevant implementation files, and don't reconstruct the
+   whole project context unnecessarily.
+
+These rules apply to every task in this project. Minimize token use while keeping quality,
+correctness, and reliability.
 
 ## Fixed project conventions
 - Money = integer minor units (LKR cents); format only at display (`src/lib/pricing/money.ts`).
