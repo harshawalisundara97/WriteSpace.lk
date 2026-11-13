@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { addToCart as addToCartAction, getCartCount } from "@/lib/cart/actions";
+import { addToCart as addToCartAction, addManyToCart as addManyToCartAction, getCartCount } from "@/lib/cart/actions";
 
 interface Point { x: number; y: number }
 interface Flight { id: number; from: Point; to: Point }
@@ -15,6 +15,7 @@ interface CartCtx {
   close: () => void;
   adding: boolean;
   add: (variantId: string, qty?: number, opts?: { open?: boolean }) => Promise<{ ok: boolean; error?: string }>;
+  addMany: (items: { variantId: string; quantity: number }[], opts?: { open?: boolean }) => Promise<{ ok: boolean; error?: string; added?: number; skipped?: number }>;
   fly: (from: Point) => void;
   refresh: () => Promise<void>;
 }
@@ -51,6 +52,15 @@ export function CartProvider({ children, initialCount }: { children: ReactNode; 
     return res;
   }, []);
 
+  const addMany = useCallback(async (items: { variantId: string; quantity: number }[], opts?: { open?: boolean }) => {
+    const res = await addManyToCartAction(items);
+    if (res.ok) {
+      if (typeof res.count === "number") setCount(res.count);
+      if (opts?.open ?? true) setOpen(true);
+    }
+    return res;
+  }, []);
+
   return (
     <Ctx.Provider
       value={{
@@ -59,6 +69,7 @@ export function CartProvider({ children, initialCount }: { children: ReactNode; 
         close: () => setOpen(false),
         adding: pending,
         add: (v, q, o) => new Promise((resolve) => startTransition(async () => resolve(await add(v, q, o)))),
+        addMany: (items, o) => new Promise((resolve) => startTransition(async () => resolve(await addMany(items, o)))),
         fly,
         refresh,
       }}

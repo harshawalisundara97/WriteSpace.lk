@@ -9,6 +9,7 @@ import {
   demoCategories, demoCollections, demoProducts, demoBanners, demoPromotions,
   demoSettings, demoCollectionProducts,
 } from "@/lib/demo/data";
+import { SPEC_FIELDS, specFilterLabel, type SpecKey, type ProductSpecs } from "@/lib/catalog/specs";
 
 const PRODUCT_SELECT =
   "id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,created_at," +
@@ -25,6 +26,7 @@ export interface CatalogFilters {
   maxMinor?: number;
   inStock?: boolean;
   colours?: string[];
+  specs?: Partial<Record<SpecKey, string[]>>;  // spec key → selected raw values
   sort?: "newest" | "price_asc" | "price_desc" | "name";
   page?: number;
   pageSize?: number;
@@ -146,6 +148,17 @@ export async function getRelatedProducts(categoryId: string | null, excludeId: s
   return (data ?? []) as unknown as ProductWithVariants[];
 }
 
+function matchSpecs(specs: ProductSpecs | null | undefined, sel: Partial<Record<SpecKey, string[]>> | undefined): boolean {
+  if (!sel) return true;
+  for (const key of Object.keys(sel) as SpecKey[]) {
+    const vals = sel[key];
+    if (!vals?.length) continue;
+    const raw = specs?.[key];
+    if (raw == null || !vals.includes(String(raw))) return false;
+  }
+  return true;
+}
+
 export async function getProducts(filters: CatalogFilters): Promise<{ products: ProductWithVariants[]; total: number }> {
   if (!hasSupabase()) {
     let list = demoProducts.slice();
@@ -154,6 +167,7 @@ export async function getProducts(filters: CatalogFilters): Promise<{ products: 
     if (filters.brands?.length) list = list.filter((p) => !!p.brand && filters.brands!.includes(p.brand));
     if (filters.q?.trim()) { const t = filters.q.trim().toLowerCase(); list = list.filter((p) => p.name.toLowerCase().includes(t)); }
     if (filters.colours?.length) list = list.filter((p) => p.product_variants.some((v) => { const c = variantColorName(v.name, v.options); return c && filters.colours!.includes(c); }));
+    if (filters.specs) list = list.filter((p) => matchSpecs(p.specs, filters.specs));
     list = list.filter((p) => {
       const min = Math.min(...p.product_variants.map((v) => v.price_minor));
       if (filters.minMinor != null && min < filters.minMinor) return false;
@@ -205,6 +219,7 @@ export async function getProducts(filters: CatalogFilters): Promise<{ products: 
       const match = p.product_variants.some((v) => { const c = variantColorName(v.name, v.options); return c && filters.colours!.includes(c); });
       if (!match) return false;
     }
+    if (!matchSpecs(p.specs, filters.specs)) return false;
     return true;
   });
 
@@ -253,6 +268,11 @@ export async function searchProducts(term: string, limit = 10): Promise<Product[
   return (fuzzy ?? []) as Product[];
 }
 
+export interface SpecFacet {
+  key: SpecKey;
+  label: string;
+  values: { value: string; label: string; count: number }[];
+}
 export interface Facets {
   brands: { name: string; count: number }[];
   colours: { name: string; hex: string; count: number }[];
@@ -260,12 +280,14 @@ export interface Facets {
   priceMax: number;   // minor
   inStock: number;
   total: number;
+  specs: SpecFacet[];
 }
 
 function computeFacets(products: ProductWithVariants[]): Facets {
   const brandMap = new Map<string, number>();
   const colourMap = new Map<string, number>();
   let priceMin = Infinity, priceMax = 0, inStock = 0;
+  const specMaps = new Map<SpecKey, Map<string, number>>();
 
   for (const p of products) {
     if (p.brand) brandMap.set(p.brand, (brandMap.get(p.brand) ?? 0) + 1);
@@ -281,6 +303,25 @@ function computeFacets(products: ProductWithVariants[]): Facets {
     if (pMin !== Infinity) { priceMin = Math.min(priceMin, pMin); priceMax = Math.max(priceMax, pMin); }
     if (hasStock) inStock++;
     for (const c of colours) colourMap.set(c, (colourMap.get(c) ?? 0) + 1);
+    for (const field of SPEC_FIELDS) {
+      const raw = p.specs?.[field.key];
+      if (raw == null || raw === "") continue;
+      const val = String(raw);
+      let m = specMaps.get(field.key);
+      if (!m) { m = new Map(); specMaps.set(field.key, m); }
+      m.set(val, (m.get(val) ?? 0) + 1);
+    }
+  }
+
+  const specFacets: SpecFacet[] = [];
+  for (const field of SPEC_FIELDS) {
+    const m = specMaps.get(field.key);
+    if (!m || m.size === 0) continue;
+    const values = Array.from(m.entries()).map(([value, count]) => ({ value, label: specFilterLabel(field.key, value), count }));
+    if (field.kind === "number") values.sort((a, b) => Number(a.value) - Number(b.value));
+    else if (field.options) { const opts = field.options; values.sort((a, b) => opts.indexOf(a.value) - opts.indexOf(b.value)); }
+    else values.sort((a, b) => a.value.localeCompare(b.value));
+    specFacets.push({ key: field.key, label: field.label, values });
   }
 
   return {
@@ -290,6 +331,7 @@ function computeFacets(products: ProductWithVariants[]): Facets {
     priceMax,
     inStock,
     total: products.length,
+    specs: specFacets,
   };
 }
 

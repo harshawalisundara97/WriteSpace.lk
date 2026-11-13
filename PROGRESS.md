@@ -1,7 +1,7 @@
 # WriteSpace.lk — Progress
 
 > Rolling status log. Update after each development session.
-> **Last updated:** 2026-11-12 · **Branch:** `main` · **Last commit:** `2d8518d` (feat(customer): add About page + footer link — TASK-002)
+> **Last updated:** 2026-11-13 · **Branch:** `main` · **Last commit:** `2d8518d` (feat(customer): add About page + footer link — TASK-002)
 > "Verified" = built + browser-checked this session. "Committed" = in Git history but not re-verified here.
 > See [docs/PROJECT_MAP.md](docs/PROJECT_MAP.md) (structure) and [ARCHITECTURE.md](ARCHITECTURE.md) (design).
 
@@ -29,6 +29,9 @@ Verified this session (built, typecheck + `next build` pass, browser-checked):
 - **About page** (`/about`) using the content shell + footer About link (TASK-002, `2d8518d`)
 - **Contact page** (`/contact`) — content-shell page with store contact cards + enquiry form posting to `/api/contact`, emailed to the store inbox via Resend (`lib/email/enquiry.ts`), no-op in demo mode; footer Contact link (TASK-003, _commit pending_)
 - **FAQ page** (`/faq`) — stationery-focused Q/A (orders & payment, GSM/paper sizes/ruling/refills, delivery, returns) on the content shell + footer FAQ link (TASK-004, _commit pending_)
+- **Stationery product specs** (GSM, paper size, ruling, sheet count, colour) — product-level `specs` jsonb + shared `lib/catalog/specs.ts`, admin form inputs, and a PDP spec table; schema in step across migrations/seed/setup (TASK-005, _commit pending_)
+- **Spec-based catalog filters** (GSM, paper size, ruling, sheet count, colour) — multi-select facets on `/products` + `/c/[category]`, one URL param per spec key, counts from `computeFacets`, reusing `SPEC_FIELDS` (TASK-006, _commit pending_)
+- **Bundles & school packs** (`/bundles` + `/bundles/[slug]`) — curated/grade packs of existing products with an optional bundle price + “Add all to cart” (`addManyToCart`); `bundles`/`bundle_items` schema in step across migrations/seed/setup, header + footer “School packs” links, sitemap entries (TASK-007, _commit pending_)
 
 Committed earlier (not re-verified this session): checkout/payments, accounts,
 admin dashboard, demo mode, PDP/reviews/quick-view/search, faceted filters,
@@ -37,7 +40,7 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 
 ## Current work
 
-- TASK-004 (stationery-focused FAQ page) — **done & verified this session; commit pending.** TASK-003 (Contact page) is also still uncommitted from its session; both are in the working tree. Next: TASK-005 (stationery product specifications).
+- TASK-007 (bundles & school packs) — **done & verified this session; commit pending.** TASK-003/004/005/006 and TASK-007 are all still uncommitted from their sessions; all five are in the working tree. Next: TASK-008 (bulk ordering — tiered pricing + bulk qty UI), which also builds on TASK-005's specs.
   See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap.
 
 ## Pending tasks
@@ -51,7 +54,7 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 ## Known issues / limitations
 
 - In demo mode, admin **writes** no-op or show an error toast by design (no backend) — not a bug.
-- Existing Supabase projects need migrations `0005_store_contact` and `0006_wishlist` run (new columns/table).
+- Existing Supabase projects need migrations `0005_store_contact`, `0006_wishlist`, `0007_product_specs` and `0008_bundles` run (new columns/tables).
 - The shared preview link is a quick tunnel: ephemeral and its URL rotates on restart.
 - (Unknown) Stripe LKR support and whether PayHere is the day-1 gateway — open decision in ARCHITECTURE.md §12.
 

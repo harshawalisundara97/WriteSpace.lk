@@ -111,6 +111,25 @@ insert into product_collections (product_id, collection_id) values
   ('33333333-0000-0000-0000-000000000006','22222222-0000-0000-0000-000000000003')
 on conflict do nothing;
 
+-- ---------- bundles & school packs ----------
+insert into bundles (id, name, slug, description, age_group, grade_label, bundle_price_minor, is_featured, position) values
+  ('55555555-0000-0000-0000-000000000001','Grade 1–3 Starter Pack','grade-1-3-starter-pack','Everything a young learner needs for the new term — chunky crayons, smooth gel pens and ruled notebooks, picked for small hands.','kids','Grade 1–3',459000,true,1),
+  ('55555555-0000-0000-0000-000000000002','Office Essentials Pack','office-essentials-pack','A desk-ready set for grown-ups — a classic fountain pen, a bamboo organizer and a dotted notebook for notes and planning.','adults','Office starter',829000,true,2),
+  ('55555555-0000-0000-0000-000000000003','Little Artist Pack','little-artist-pack','Spark creativity with a vibrant watercolour set, jumbo crayons and glitter gel pens — a complete art kit in one.','kids','Ages 4+',null,false,3)
+on conflict (slug) do nothing;
+
+insert into bundle_items (bundle_id, product_id, variant_id, quantity, position) values
+  ('55555555-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000005','44444444-0000-0000-0000-000000000005',2,0),
+  ('55555555-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','44444444-0000-0000-0000-000000000001',1,1),
+  ('55555555-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000003','44444444-0000-0000-0000-000000000013',2,2),
+  ('55555555-0000-0000-0000-000000000002','33333333-0000-0000-0000-000000000002','44444444-0000-0000-0000-000000000002',1,0),
+  ('55555555-0000-0000-0000-000000000002','33333333-0000-0000-0000-000000000006','44444444-0000-0000-0000-000000000006',1,1),
+  ('55555555-0000-0000-0000-000000000002','33333333-0000-0000-0000-000000000003','44444444-0000-0000-0000-000000000013',1,2),
+  ('55555555-0000-0000-0000-000000000003','33333333-0000-0000-0000-000000000004','44444444-0000-0000-0000-000000000004',1,0),
+  ('55555555-0000-0000-0000-000000000003','33333333-0000-0000-0000-000000000005','44444444-0000-0000-0000-000000000005',1,1),
+  ('55555555-0000-0000-0000-000000000003','33333333-0000-0000-0000-000000000001','44444444-0000-0000-0000-000000000001',1,2)
+on conflict do nothing;
+
 -- ---------- promotions ----------
 insert into promotions (name, type, value, code, min_subtotal_minor, stackable, priority, is_active, starts_at, ends_at) values
   ('Welcome 10%','percentage',10,'WELCOME10',0,false,10,true,now(),now()+interval '90 days'),

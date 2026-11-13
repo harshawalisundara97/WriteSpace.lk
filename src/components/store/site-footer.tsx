@@ -40,7 +40,7 @@ export function SiteFooter({ info }: { info?: FooterInfo }) {
             </div>
           )}
         </div>
-        <FooterCol title="Shop" links={[["All products", "/products"], ["Kids", "/c/kids-corner"], ["Office & Desk", "/c/office-desk"], ["Promotions", "/promotions"]]} />
+        <FooterCol title="Shop" links={[["All products", "/products"], ["School packs", "/bundles"], ["Kids", "/c/kids-corner"], ["Office & Desk", "/c/office-desk"], ["Promotions", "/promotions"]]} />
         <FooterCol title="Account" links={[["Sign in", "/login"], ["Register", "/register"], ["My orders", "/account/orders"]]} />
         <div>
           <h4 className="text-sm font-semibold text-ink">{hasContact ? "Contact" : "Help"}</h4>

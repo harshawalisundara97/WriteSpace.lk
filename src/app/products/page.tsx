@@ -1,6 +1,7 @@
 import { CatalogFilters } from "@/components/store/catalog-filters";
 import { ProductGrid } from "@/components/store/product-grid";
 import { getAllCategories, getFacets, getProducts } from "@/lib/catalog/queries";
+import { SPEC_FIELDS, type SpecKey } from "@/lib/catalog/specs";
 
 export const metadata = { title: "All products" };
 
@@ -11,6 +12,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
   const ageGroup = (str("age") as "kids" | "adults" | undefined) ?? undefined;
   const category = str("category");
+  const specs: Partial<Record<SpecKey, string[]>> = {};
+  for (const f of SPEC_FIELDS) { const v = str(f.key)?.split(",").filter(Boolean); if (v?.length) specs[f.key] = v; }
 
   const filters = {
     q: str("q"), category, ageGroup,
@@ -19,6 +22,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     minMinor: str("min") ? Number(str("min")) : undefined,
     maxMinor: str("max") ? Number(str("max")) : undefined,
     inStock: str("inStock") === "1",
+    specs,
     sort: (str("sort") as "newest" | "price_asc" | "price_desc" | "name") ?? "newest",
     page: str("page") ? Number(str("page")) : 1,
     pageSize: 24,

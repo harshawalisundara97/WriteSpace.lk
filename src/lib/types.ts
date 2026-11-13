@@ -1,5 +1,6 @@
 // Domain row types (hand-maintained; mirror supabase/migrations).
 import type { ProductSpecs } from "@/lib/catalog/specs";
+export type { ProductSpecs } from "@/lib/catalog/specs";
 
 export type AgeGroup = "kids" | "adults" | "all";
 export type ProductStatus = "draft" | "published";
@@ -114,4 +115,31 @@ export interface CartLine {
   compare_at_minor: number | null;
   quantity: number;
   available: number;
+}
+
+// ---- Bundles & school packs (curated / grade packs) ----
+export interface Bundle {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  age_group: AgeGroup;
+  grade_label: string | null;          // e.g. "Grade 1–3"
+  image_url: string | null;
+  bundle_price_minor: number | null;   // null = sum of item prices (no discount)
+  is_featured: boolean;
+  position: number;
+  status: ProductStatus;
+  created_at: string;
+}
+
+// A bundle line: the chosen product + specific variant + quantity.
+export interface BundleItem {
+  quantity: number;
+  product: ProductWithVariants;
+  variant: ProductVariant | null;      // resolved variant (falls back to product's first)
+}
+
+export interface BundleWithItems extends Bundle {
+  items: BundleItem[];
 }

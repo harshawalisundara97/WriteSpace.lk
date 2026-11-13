@@ -15,7 +15,7 @@ export async function saveProduct(raw: unknown): Promise<{ ok: boolean; id?: str
   const productRow = {
     name: p.name, slug: p.slug, description: p.description || null, brand: p.brand || null,
     category_id: p.category_id ?? null, age_group: p.age_group, status: p.status,
-    images: p.images, seo_title: p.seo_title || null, seo_description: p.seo_description || null,
+    images: p.images, seo_title: p.seo_title || null, seo_description: p.seo_description || null, specs: p.specs,
   };
 
   let productId = p.id;

@@ -116,6 +116,39 @@ export async function addToCart(variantId: string, quantity = 1) {
   return { ok: true, count: await getCartCount() };
 }
 
+// Add several variants at once (bundles / school packs). Quantities for the
+// same variant are merged; each is clamped to available stock. Returns how many
+// distinct lines were added and how many were skipped for lack of stock.
+export async function addManyToCart(items: { variantId: string; quantity: number }[]) {
+  if (!hasSupabase()) return { ok: false, error: "Demo mode — connect Supabase to enable the cart" };
+  const merged = new Map<string, number>();
+  for (const it of items) {
+    if (!it.variantId || it.quantity <= 0) continue;
+    merged.set(it.variantId, (merged.get(it.variantId) ?? 0) + it.quantity);
+  }
+  if (merged.size === 0) return { ok: false, error: "Nothing to add" };
+
+  const db = createAdminClient();
+  const cartId = await resolveCartId(true);
+  if (!cartId) return { ok: false, error: "Could not create cart" };
+
+  let added = 0, skipped = 0;
+  for (const [variantId, quantity] of merged) {
+    const { data: inv } = await db.from("inventory").select("on_hand,reserved").eq("variant_id", variantId).maybeSingle();
+    const available = (inv?.on_hand ?? 0) - (inv?.reserved ?? 0);
+    const { data: existing } = await db
+      .from("cart_items").select("id,quantity").eq("cart_id", cartId).eq("variant_id", variantId).maybeSingle();
+    const nextQty = (existing?.quantity ?? 0) + quantity;
+    if (nextQty > available) { skipped++; continue; }
+    if (existing) await db.from("cart_items").update({ quantity: nextQty }).eq("id", existing.id);
+    else await db.from("cart_items").insert({ cart_id: cartId, variant_id: variantId, quantity });
+    added++;
+  }
+  revalidatePath("/", "layout");
+  if (added === 0) return { ok: false, error: "Not enough stock", count: await getCartCount() };
+  return { ok: true, added, skipped, count: await getCartCount() };
+}
+
 export async function updateCartItem(variantId: string, quantity: number) {
   const db = createAdminClient();
   const cartId = await resolveCartId(false);

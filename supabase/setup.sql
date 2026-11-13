@@ -740,6 +740,64 @@ alter table wishlists enable row level security;
 create policy wishlist_owner_all on wishlists for all
   using (customer_id = auth.uid()) with check (customer_id = auth.uid());
 
+-- ========== 0008_bundles ==========
+-- Bundles & school packs (curated / grade packs). Tables + RLS + seed; products
+-- referenced below are created and seeded earlier in this file.
+create table if not exists bundles (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  description text,
+  age_group age_group not null default 'all',
+  grade_label text,
+  image_url text,
+  bundle_price_minor int check (bundle_price_minor >= 0),
+  is_featured boolean not null default false,
+  position int not null default 0,
+  status product_status not null default 'published',
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_bundles_status on bundles(status);
+
+create table if not exists bundle_items (
+  bundle_id uuid references bundles(id) on delete cascade,
+  product_id uuid references products(id) on delete cascade,
+  variant_id uuid references product_variants(id) on delete set null,
+  quantity int not null default 1 check (quantity > 0),
+  position int not null default 0,
+  primary key (bundle_id, product_id)
+);
+create index if not exists idx_bundle_items_bundle on bundle_items(bundle_id);
+
+alter table bundles      enable row level security;
+alter table bundle_items enable row level security;
+
+create policy pub_read_bundles on bundles for select
+  using (status = 'published' or is_admin());
+create policy pub_read_bundle_items on bundle_items for select using (true);
+create policy admin_write_bundles on bundles for all
+  using (has_perm('products:write')) with check (has_perm('products:write'));
+create policy admin_write_bundle_items on bundle_items for all
+  using (has_perm('products:write')) with check (has_perm('products:write'));
+
+insert into bundles (id, name, slug, description, age_group, grade_label, bundle_price_minor, is_featured, position) values
+  ('55555555-0000-0000-0000-000000000001','Grade 1–3 Starter Pack','grade-1-3-starter-pack','Everything a young learner needs for the new term — chunky crayons, smooth gel pens and ruled notebooks, picked for small hands.','kids','Grade 1–3',459000,true,1),
+  ('55555555-0000-0000-0000-000000000002','Office Essentials Pack','office-essentials-pack','A desk-ready set for grown-ups — a classic fountain pen, a bamboo organizer and a dotted notebook for notes and planning.','adults','Office starter',829000,true,2),
+  ('55555555-0000-0000-0000-000000000003','Little Artist Pack','little-artist-pack','Spark creativity with a vibrant watercolour set, jumbo crayons and glitter gel pens — a complete art kit in one.','kids','Ages 4+',null,false,3)
+on conflict (slug) do nothing;
+
+insert into bundle_items (bundle_id, product_id, variant_id, quantity, position) values
+  ('55555555-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000005','44444444-0000-0000-0000-000000000005',2,0),
+  ('55555555-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000001','44444444-0000-0000-0000-000000000001',1,1),
+  ('55555555-0000-0000-0000-000000000001','33333333-0000-0000-0000-000000000003','44444444-0000-0000-0000-000000000013',2,2),
+  ('55555555-0000-0000-0000-000000000002','33333333-0000-0000-0000-000000000002','44444444-0000-0000-0000-000000000002',1,0),
+  ('55555555-0000-0000-0000-000000000002','33333333-0000-0000-0000-000000000006','44444444-0000-0000-0000-000000000006',1,1),
+  ('55555555-0000-0000-0000-000000000002','33333333-0000-0000-0000-000000000003','44444444-0000-0000-0000-000000000013',1,2),
+  ('55555555-0000-0000-0000-000000000003','33333333-0000-0000-0000-000000000004','44444444-0000-0000-0000-000000000004',1,0),
+  ('55555555-0000-0000-0000-000000000003','33333333-0000-0000-0000-000000000005','44444444-0000-0000-0000-000000000005',1,1),
+  ('55555555-0000-0000-0000-000000000003','33333333-0000-0000-0000-000000000001','44444444-0000-0000-0000-000000000001',1,2)
+on conflict do nothing;
+
 -- ========== make yourself an admin ==========
 -- AFTER you register an account in the app, run this (replace the email):
 -- insert into admin_users (id, role)

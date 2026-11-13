@@ -1,5 +1,5 @@
 import type {
-  Banner, Category, Collection, ProductWithVariants, Promotion,
+  Banner, Bundle, BundleItem, BundleWithItems, Category, Collection, ProductSpecs, ProductWithVariants, Promotion,
 } from "@/lib/types";
 
 // In-repo demo dataset mirroring supabase/seed.sql, used when Supabase isn't
@@ -25,10 +25,11 @@ function product(
   id: string, cat: string, name: string, slug: string, brand: string,
   age: "kids" | "adults" | "all", desc: string,
   variants: { sku: string; name?: string; price: number; compareAt?: number; stock: number }[],
+  spec: ProductSpecs = {},
 ): ProductWithVariants {
   return {
     id, category_id: cat, name, slug, description: desc, brand, age_group: age,
-    status: "published", images: [], seo_title: null, seo_description: null, created_at: now,
+    status: "published", images: [], seo_title: null, seo_description: null, specs: spec, created_at: now,
     product_variants: variants.map((v, i) => ({
       id: `${id}-v${i}`, product_id: id, sku: v.sku, name: v.name ?? null, options: {},
       price_minor: v.price, compare_at_minor: v.compareAt ?? null, currency: "LKR",
@@ -47,7 +48,7 @@ export const demoProducts: ProductWithVariants[] = [
     [{ sku: "WS-FP-BLK", name: "Black / Fine", price: 345000, stock: 40 }]),
   product("p3", "c2", "A5 Dotted Notebook", "a5-dotted-notebook", "PaperCo", "all",
     "160gsm bleed-proof dotted pages, lay-flat binding, elastic closure. Ideal for bullet journaling.",
-    [{ sku: "WS-NB-A5-TEAL", name: "A5 / Teal", price: 150000, stock: 75 }, { sku: "WS-NB-A5-BLK", name: "A5 / Black", price: 150000, stock: 3 }]),
+    [{ sku: "WS-NB-A5-TEAL", name: "A5 / Teal", price: 150000, stock: 75 }, { sku: "WS-NB-A5-BLK", name: "A5 / Black", price: 150000, stock: 3 }], { gsm: 160, paper_size: "A5", ruling: "Dotted", sheet_count: 160 }),
   product("p4", "c3", "Watercolour Paint Set (24)", "watercolour-set-24", "ArtLab", "all",
     "24 half-pans of vibrant, blendable watercolour with a travel brush. Non-toxic.",
     [{ sku: "WS-WC-24", name: "24 half-pans", price: 275000, compareAt: 320000, stock: 60 }]),
@@ -68,6 +69,45 @@ const COLLECTION_MEMBERS: Record<string, string[]> = {
 export function demoCollectionProducts(slug: string): ProductWithVariants[] {
   const ids = COLLECTION_MEMBERS[slug] ?? [];
   return demoProducts.filter((p) => ids.includes(p.id));
+}
+
+// ---- demo bundles / school packs (curated / grade packs) ----
+type BundleDef = { bundle: Bundle; items: { productId: string; variantId?: string; quantity: number }[] };
+
+const BUNDLE_DEFS: BundleDef[] = [
+  {
+    bundle: { id: "bun1", name: "Grade 1–3 Starter Pack", slug: "grade-1-3-starter-pack", description: "Everything a young learner needs for the new term — chunky crayons, smooth gel pens and ruled notebooks, picked for small hands.", age_group: "kids", grade_label: "Grade 1–3", image_url: null, bundle_price_minor: 459000, is_featured: true, position: 1, status: "published", created_at: now },
+    items: [{ productId: "p5", quantity: 2 }, { productId: "p1", quantity: 1 }, { productId: "p3", quantity: 2 }],
+  },
+  {
+    bundle: { id: "bun2", name: "Office Essentials Pack", slug: "office-essentials-pack", description: "A desk-ready set for grown-ups — a classic fountain pen, a bamboo organizer and a dotted notebook for notes and planning.", age_group: "adults", grade_label: "Office starter", image_url: null, bundle_price_minor: 829000, is_featured: true, position: 2, status: "published", created_at: now },
+    items: [{ productId: "p2", quantity: 1 }, { productId: "p6", quantity: 1 }, { productId: "p3", quantity: 1 }],
+  },
+  {
+    bundle: { id: "bun3", name: "Little Artist Pack", slug: "little-artist-pack", description: "Spark creativity with a vibrant watercolour set, jumbo crayons and glitter gel pens — a complete art kit in one.", age_group: "kids", grade_label: "Ages 4+", image_url: null, bundle_price_minor: null, is_featured: false, position: 3, status: "published", created_at: now },
+    items: [{ productId: "p4", quantity: 1 }, { productId: "p5", quantity: 1 }, { productId: "p1", quantity: 1 }],
+  },
+];
+
+function buildBundle(def: BundleDef): BundleWithItems {
+  const items: BundleItem[] = def.items.flatMap((it) => {
+    const product = demoProducts.find((p) => p.id === it.productId);
+    if (!product) return [];
+    const variant = it.variantId
+      ? product.product_variants.find((v) => v.id === it.variantId) ?? null
+      : product.product_variants[0] ?? null;
+    return [{ quantity: it.quantity, product, variant }];
+  });
+  return { ...def.bundle, items };
+}
+
+export function demoBundles(): BundleWithItems[] {
+  return BUNDLE_DEFS.map(buildBundle);
+}
+
+export function demoBundleBySlug(slug: string): BundleWithItems | null {
+  const def = BUNDLE_DEFS.find((d) => d.bundle.slug === slug);
+  return def ? buildBundle(def) : null;
 }
 
 export const demoBanners: Banner[] = [

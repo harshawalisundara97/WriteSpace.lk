@@ -45,6 +45,7 @@ export function Header({ categories }: { categories: Category[] }) {
             </Link>
           ))}
           <Link href="/promotions" className="text-sm font-medium text-accent hover:text-accent-600">Deals</Link>
+          <Link href="/bundles" className="text-sm text-ink-soft transition-colors hover:text-ink">School packs</Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
@@ -89,6 +90,7 @@ export function Header({ categories }: { categories: Category[] }) {
                 </Link>
               ))}
               <Link href="/promotions" onClick={() => setMenuOpen(false)} className="rounded-lg px-2 py-2 font-medium text-accent">Deals</Link>
+              <Link href="/bundles" onClick={() => setMenuOpen(false)} className="rounded-lg px-2 py-2 text-ink-soft hover:bg-paper-2">School packs</Link>
             </div>
           </motion.nav>
         )}

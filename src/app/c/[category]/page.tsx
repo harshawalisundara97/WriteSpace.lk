@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { CatalogFilters } from "@/components/store/catalog-filters";
 import { ProductGrid } from "@/components/store/product-grid";
 import { getAllCategories, getFacets, getProducts } from "@/lib/catalog/queries";
+import { SPEC_FIELDS, type SpecKey } from "@/lib/catalog/specs";
 
 export const revalidate = 60;
 
@@ -33,6 +34,9 @@ export default async function CategoryPage({
   const cat = categories.find((c) => c.slug === category);
   if (!cat) notFound();
 
+  const specs: Partial<Record<SpecKey, string[]>> = {};
+  for (const f of SPEC_FIELDS) { const v = str(f.key)?.split(",").filter(Boolean); if (v?.length) specs[f.key] = v; }
+
   const [{ products, total }, facets] = await Promise.all([
     getProducts({
       category,
@@ -41,6 +45,7 @@ export default async function CategoryPage({
       minMinor: str("min") ? Number(str("min")) : undefined,
       maxMinor: str("max") ? Number(str("max")) : undefined,
       inStock: str("inStock") === "1",
+      specs,
       sort: (str("sort") as "newest" | "price_asc" | "price_desc" | "name") ?? "newest",
       pageSize: 24,
     }),

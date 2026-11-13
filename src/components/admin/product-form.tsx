@@ -8,6 +8,7 @@ import { saveProduct, uploadProductImage } from "@/lib/admin/product-actions";
 import { useToast } from "@/components/admin/toast";
 import { toMinor, toMajor } from "@/lib/pricing/money";
 import type { Category, ProductWithVariants } from "@/lib/types";
+import { SPEC_FIELDS } from "@/lib/catalog/specs";
 
 type VariantRow = {
   id?: string; sku: string; name: string; price: string; compareAt: string; onHand: string; lowStock: string; is_active: boolean;
@@ -33,6 +34,11 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
   const [status, setStatus] = useState(product?.status ?? "draft");
   const [images, setImages] = useState<{ url: string; alt?: string }[]>(product?.images ?? []);
   const [uploading, setUploading] = useState(false);
+  const [specs, setSpecs] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const f of SPEC_FIELDS) { const v = product?.specs?.[f.key]; if (v != null) init[f.key] = String(v); }
+    return init;
+  });
 
   const [variants, setVariants] = useState<VariantRow[]>(
     product?.product_variants?.length
@@ -69,12 +75,19 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
 
   function submit() {
     setError(null);
+    const specsPayload: Record<string, string | number> = {};
+    for (const f of SPEC_FIELDS) {
+      const raw = (specs[f.key] ?? "").trim();
+      if (!raw) continue;
+      specsPayload[f.key] = f.kind === "number" ? Number(raw) : raw;
+    }
     const payload = {
       id: product?.id,
       name, slug, description, brand,
       category_id: categoryId || null,
       age_group: ageGroup, status, images,
       seo_title: "", seo_description: "",
+      specs: specsPayload,
       variants: variants.map((v) => ({
         id: v.id, sku: v.sku, name: v.name,
         price_minor: toMinor(Number(v.price || 0)),
@@ -122,6 +135,25 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
         <span className="mb-1 block text-sm text-ink-soft">Description</span>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-xl border border-line bg-paper p-3" />
       </label>
+
+      <div>
+        <p className="mb-2 text-sm font-medium">Specifications</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {SPEC_FIELDS.map((f) => (
+            <label key={f.key} className="block">
+              <span className="mb-1 block text-sm text-ink-soft">{f.label}</span>
+              {f.kind === "select" ? (
+                <select value={specs[f.key] ?? ""} onChange={(e) => setSpecs((s) => ({ ...s, [f.key]: e.target.value }))} className="h-11 w-full rounded-xl border border-line bg-paper px-3">
+                  <option value="">{f.placeholder ?? "—"}</option>
+                  {f.options!.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : (
+                <input type={f.kind === "number" ? "number" : "text"} value={specs[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setSpecs((s) => ({ ...s, [f.key]: e.target.value }))} className="h-11 w-full rounded-xl border border-line bg-paper px-3" />
+              )}
+            </label>
+          ))}
+        </div>
+      </div>
 
       <div>
         <p className="mb-2 text-sm font-medium">Images</p>

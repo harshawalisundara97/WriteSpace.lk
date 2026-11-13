@@ -56,3 +56,13 @@ export function specEntries(
 export function hasSpecs(specs: ProductSpecs | null | undefined): boolean {
   return specEntries(specs).length > 0;
 }
+
+// Display label for a single spec value (used by spec-based catalog filters —
+// facet options and active-filter chips). Falls back to the raw value for an
+// unknown key. Returns "" for empty/null, matching formatSpec.
+export function specFilterLabel(key: SpecKey, value: string | number | null | undefined): string {
+  if (value == null || value === "") return "";
+  const field = SPEC_FIELDS.find((f) => f.key === key);
+  if (!field) return String(value).trim();
+  return formatSpec(field, value);
+}

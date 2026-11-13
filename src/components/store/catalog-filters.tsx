@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { SlidersHorizontal, X } from "lucide-react";
 import type { Category } from "@/lib/types";
 import type { Facets } from "@/lib/catalog/queries";
+import { SPEC_FIELDS, specFilterLabel } from "@/lib/catalog/specs";
 import { formatMoney } from "@/lib/pricing/money";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,8 @@ export function CatalogFilters({ facets, categories, hideCategory }: { facets: F
     (params.get("category") && !hideCategory ? 1 : 0) + (params.get("age") ? 1 : 0) +
     (params.get("brands")?.split(",").filter(Boolean).length ?? 0) +
     (params.get("colours")?.split(",").filter(Boolean).length ?? 0) +
-    (params.get("min") || params.get("max") ? 1 : 0) + (params.get("inStock") === "1" ? 1 : 0);
+    (params.get("min") || params.get("max") ? 1 : 0) + (params.get("inStock") === "1" ? 1 : 0) +
+    SPEC_FIELDS.reduce((n, f) => n + (params.get(f.key)?.split(",").filter(Boolean).length ?? 0), 0);
 
   return (
     <>
@@ -86,6 +88,10 @@ function Controls({ facets, categories, hideCategory }: { facets: Facets; catego
   for (const c of selectedColours) chips.push({ label: c, onRemove: () => toggle("colours", c, selectedColours) });
   if (curMin || curMax) chips.push({ label: `${formatMoney(Number(curMin ?? facets.priceMin))}–${formatMoney(Number(curMax ?? facets.priceMax))}`, onRemove: () => { setParam("min", null); } });
   if (params.get("inStock") === "1") chips.push({ label: "In stock", onRemove: () => setParam("inStock", null) });
+  for (const f of SPEC_FIELDS) {
+    const sel = (params.get(f.key) ?? "").split(",").filter(Boolean);
+    for (const v of sel) chips.push({ label: specFilterLabel(f.key, v), onRemove: () => toggle(f.key, v, sel) });
+  }
 
   function clearAll() { router.push(pathname, { scroll: false }); }
 
@@ -181,6 +187,23 @@ function Controls({ facets, categories, hideCategory }: { facets: Facets; catego
           </div>
         </div>
       )}
+
+      {facets.specs.map((f) => (
+        <div key={f.key}>
+          <p className="mb-2 font-medium text-ink">{f.label}</p>
+          <div className="space-y-1.5">
+            {f.values.map((val) => {
+              const sel = (params.get(f.key) ?? "").split(",").filter(Boolean);
+              return (
+                <label key={val.value} className="flex items-center justify-between text-ink-soft">
+                  <span className="flex items-center gap-2"><input type="checkbox" checked={sel.includes(val.value)} onChange={() => toggle(f.key, val.value, sel)} className="accent-brand" />{val.label}</span>
+                  <span className="text-xs">{val.count}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
       <label className="flex items-center justify-between text-ink-soft">
         <span className="flex items-center gap-2"><input type="checkbox" checked={params.get("inStock") === "1"} onChange={(e) => setParam("inStock", e.target.checked ? "1" : null)} className="accent-brand" />In stock only</span>

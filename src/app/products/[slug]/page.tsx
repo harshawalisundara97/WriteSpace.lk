@@ -10,6 +10,7 @@ import { ReviewsSection } from "@/components/store/reviews-section";
 import { getProductBySlug, getRelatedProducts } from "@/lib/catalog/queries";
 import { getProductReviews } from "@/lib/reviews/queries";
 import { summarize } from "@/lib/reviews/types";
+import { specEntries } from "@/lib/catalog/specs";
 
 export const revalidate = 60;
 
@@ -37,6 +38,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const variants = product.product_variants ?? [];
   const price = Math.min(...variants.map((v) => v.price_minor));
   const currency = variants[0]?.currency ?? "LKR";
+  const specs = specEntries(product.specs);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -70,6 +72,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </a>
           )}
           {product.description && <p className="mt-4 text-ink-soft">{product.description}</p>}
+          {specs.length > 0 && (
+            <div className="mt-6">
+              <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-ink-soft">Specifications</h2>
+              <dl className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+                {specs.map((s) => (
+                  <div key={s.key} className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
+                    <dt className="text-ink-soft">{s.label}</dt>
+                    <dd className="font-medium text-ink">{s.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
           <div className="mt-6"><PdpBuy variants={variants} currency={currency} /></div>
         </div>
       </div>
