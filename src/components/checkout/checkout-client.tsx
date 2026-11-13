@@ -10,6 +10,7 @@ import { createCheckout } from "@/lib/checkout/actions";
 import type { AddressInput } from "@/lib/validation/checkout";
 import { DELIVERY_METHODS, DEFAULT_DELIVERY_METHOD, deliveryMethod, type DeliveryMethodId } from "@/lib/checkout/delivery";
 import type { CartLine } from "@/lib/types";
+import type { SavedAddress } from "@/lib/account/addresses";
 
 interface Totals {
   subtotal_minor: number; discount_minor: number; shipping_minor: number; tax_minor: number; total_minor: number;
@@ -17,18 +18,35 @@ interface Totals {
 
 type DeliveryTotals = Record<DeliveryMethodId, { shipping_minor: number; total_minor: number }>;
 
+function emptyAddress(email: string): AddressInput {
+  return { full_name: "", email, phone: "", line1: "", line2: "", city: "", postal_code: "", country: "LK", notes: "" };
+}
+
+// A saved address fills the delivery fields; email (account-level) and order
+// notes are kept from the live form.
+function addrToInput(a: SavedAddress, email: string): AddressInput {
+  return {
+    full_name: a.full_name, email, phone: a.phone, line1: a.line1, line2: a.line2 ?? "",
+    city: a.city, postal_code: a.postal_code ?? "", country: a.country || "LK", notes: "",
+  };
+}
+
 export function CheckoutClient({
-  lines, totals, deliveryTotals, currency, publishableKey, siteUrl,
+  lines, totals, deliveryTotals, currency, publishableKey, siteUrl, savedAddresses, defaultEmail,
 }: {
-  lines: CartLine[]; totals: Totals; deliveryTotals: DeliveryTotals; currency: string; publishableKey: string | null; siteUrl: string;
+  lines: CartLine[]; totals: Totals; deliveryTotals: DeliveryTotals; currency: string; publishableKey: string | null; siteUrl: string; savedAddresses: SavedAddress[]; defaultEmail: string;
 }) {
   const [method, setMethod] = useState<DeliveryMethodId>(DEFAULT_DELIVERY_METHOD);
   const needsAddress = deliveryMethod(method).needsAddress;
   // Server-computed figures for the chosen method (re-verified in createCheckout).
   const { shipping_minor, total_minor } = deliveryTotals[method];
-  const [address, setAddress] = useState<AddressInput>({
-    full_name: "", email: "", phone: "", line1: "", line2: "", city: "", postal_code: "", country: "LK", notes: "",
+  const [address, setAddress] = useState<AddressInput>(() => {
+    const def = savedAddresses.find((a) => a.is_default);
+    return def ? addrToInput(def, defaultEmail) : emptyAddress(defaultEmail);
   });
+  const [selectedAddrId, setSelectedAddrId] = useState<string | null>(
+    savedAddresses.find((a) => a.is_default)?.id ?? null,
+  );
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +59,16 @@ export function CheckoutClient({
 
   function set<K extends keyof AddressInput>(k: K, v: AddressInput[K]) {
     setAddress((a) => ({ ...a, [k]: v }));
+  }
+
+  function pickAddress(a: SavedAddress) {
+    setSelectedAddrId(a.id);
+    setAddress((prev) => ({ ...addrToInput(a, prev.email), notes: prev.notes }));
+  }
+
+  function useNewAddress() {
+    setSelectedAddrId(null);
+    setAddress((prev) => ({ ...emptyAddress(prev.email), notes: prev.notes }));
   }
 
   async function submitAddress(e: React.FormEvent) {
@@ -85,6 +113,31 @@ export function CheckoutClient({
               })}
             </fieldset>
 
+            {needsAddress && savedAddresses.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="pt-2 font-display text-xl font-semibold">Saved addresses</h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {savedAddresses.map((a) => {
+                    const active = selectedAddrId === a.id;
+                    return (
+                      <button
+                        type="button" key={a.id} onClick={() => pickAddress(a)}
+                        className={`rounded-xl border p-4 text-left transition-colors ${active ? "border-brand bg-paper-2" : "border-line bg-paper hover:bg-paper-2"}`}
+                      >
+                        <span className="block font-medium">{a.label || a.full_name}</span>
+                        <span className="mt-0.5 block text-sm text-ink-soft">{a.line1}{a.line2 ? `, ${a.line2}` : ""}, {a.city}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button" onClick={useNewAddress}
+                    className={`rounded-xl border border-dashed p-4 text-left text-sm transition-colors ${selectedAddrId === null ? "border-brand bg-paper-2 text-ink" : "border-line bg-paper text-ink-soft hover:bg-paper-2"}`}
+                  >
+                    + Use a new address
+                  </button>
+                </div>
+              </div>
+            )}
             <h2 className="pt-2 font-display text-xl font-semibold">{needsAddress ? "Delivery details" : "Your details"}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" value={address.full_name} onChange={(v) => set("full_name", v)} required />

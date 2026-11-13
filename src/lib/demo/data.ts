@@ -343,3 +343,9 @@ export const demoUser = {
   full_name: "Demo Shopper",
   phone: "+94 77 000 0000",
 };
+
+// ---- demo saved addresses (so the address book is viewable without a backend) ----
+export const demoAddresses = [
+  { id: "addr-home", label: "Home", full_name: "Demo Shopper", phone: "+94 77 000 0000", line1: "42 Galle Road", line2: null as string | null, city: "Colombo 03", postal_code: "00300" as string | null, country: "LK", is_default: true },
+  { id: "addr-office", label: "Office", full_name: "Demo Shopper", phone: "+94 11 234 5678", line1: "120 Union Place", line2: "4th Floor" as string | null, city: "Colombo 02", postal_code: "00200" as string | null, country: "LK", is_default: false },
+];

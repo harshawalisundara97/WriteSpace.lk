@@ -20,7 +20,7 @@ Status legend: ☐ pending · ◐ in progress · ☑ completed.
 | TASK-007 | Bundles & school packs (curated / grade packs) | 005 | ☑ |
 | TASK-008 | Bulk ordering (tiered pricing + bulk qty UI) | 005 | ☑ |
 | TASK-009 | Delivery method selection at checkout (standard / express / pickup) | — | ☑ |
-| TASK-010 | Saved delivery address book in account | 009 | ☐ |
+| TASK-010 | Saved delivery address book in account | 009 | ☑ |
 
 ---
 
@@ -458,5 +458,80 @@ method (`checkoutSchema`), recomputes totals with it and stores it in the new
 - The express surcharge and the delivery ETAs are code constants in
   `delivery.ts`; the copy on `/shipping` and `/faq` was not changed.
 - Order emails do not show a shipping line, so they were left as is.
+
+**Commit:** _pending_
+
+
+---
+
+## TASK-010 — Saved delivery address book ☑
+
+**Objective:** Let a signed-in customer keep a book of delivery addresses —
+add / edit / delete and mark one default — and pick a saved address at checkout
+so the delivery form is prefilled.
+
+**Design:** addresses are a first-class owner-scoped table (`addresses`),
+mirroring the `wishlists` RLS pattern (`customer_id = auth.uid()` for all ops).
+Fields match the checkout delivery fields plus a `label` ("Home", "Office") and
+`is_default`; email is account-level, so it is **not** stored per address.
+Single-default is kept in the server action (setting one unsets the others),
+not a partial unique index, to stay simple and demo-safe. The account page and
+the checkout picker both read `getMyAddresses()`; checkout prefills the default
+on load and lets the customer switch to another saved address or a new one.
+
+**Files added**
+- `supabase/migrations/0011_addresses.sql` — `addresses` table + index +
+  `set_updated_at` trigger + owner-all RLS policy.
+- `src/lib/validation/address.ts` — `addressBookSchema` (label/full_name/phone/
+  line1/line2/city/postal_code/country + `is_default`; country defaults `LK`).
+- `src/lib/account/addresses.ts` — `SavedAddress` type, `getMyAddresses`,
+  `saveAddress` (insert/update; unsets other defaults), `deleteAddress`,
+  `setDefaultAddress`; demo mode returns fixtures, writes no-op with a message.
+- `src/components/account/address-book.tsx` — client address book (cards with a
+  Default badge, Edit / Delete / Set default, and an add/edit form).
+- `src/app/account/addresses/page.tsx` — account page that lists the book.
+- `tests/unit/address.test.ts` — `addressBookSchema` validation tests.
+
+**Files modified**
+- `src/components/account/account-nav.tsx` — "Addresses" nav link (MapPin),
+  between Profile and Wishlist.
+- `src/app/checkout/page.tsx` — fetches `getMyAddresses()` + the current user in
+  parallel and passes `savedAddresses` + `defaultEmail` to the checkout client.
+- `src/components/checkout/checkout-client.tsx` — prefills email from the
+  account and the default saved address; a saved-address picker (cards + "Use a
+  new address") when the method ships and the customer has saved addresses.
+- `src/lib/demo/data.ts` — `demoAddresses` (Home default + Office) so the book is
+  viewable without a backend.
+- `supabase/setup.sql` — `0011_addresses` block appended (no seed rows:
+  addresses reference auth-backed customers this file does not create).
+
+**Acceptance criteria** (all met)
+- A signed-in customer can add, edit, delete and set a default address; exactly
+  one stays default. _(met — server action; browser-checked in demo mode for
+  list/add/no-op)_
+- Addresses are owner-scoped (RLS) and never leak across accounts. _(met — RLS
+  policy mirrors wishlists)_
+- Checkout offers the saved addresses and prefills the chosen one (default on
+  load); email prefills from the account. _(implemented; the picker is not
+  browser-checked — the cart is disabled in demo mode, so `/checkout` only
+  renders its empty-cart state, same limitation as TASK-009)_
+- Schema is in step across `migrations/*` and `setup.sql` (`seed.sql` has no
+  customer rows, so needs none); demo mode renders the book without a backend.
+
+**Tests performed**
+- `npm run typecheck` — pass.
+- `npm test` — pass (31 tests; 5 new address-schema tests).
+- `npm run build` — pass; `/account/addresses` builds as a dynamic function (ƒ,
+  the account layout is `force-dynamic`).
+- Browser check (demo mode): `/account/addresses` lists the two demo addresses
+  (Home with a Default badge, Office with "Set default"), the "Addresses" nav
+  link is present, the add form opens and saving shows "Demo mode — connect
+  Supabase to save addresses."; no console errors. `/checkout` still renders its
+  empty-cart state with no console errors after the added server fetches.
+
+**Notes**
+- Existing Supabase projects must run `0011_addresses`.
+- The checkout picker and a real save/default run need a backend + a non-empty
+  cart to verify end to end (demo mode disables the cart).
 
 **Commit:** _pending_

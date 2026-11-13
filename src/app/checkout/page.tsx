@@ -2,11 +2,13 @@ import Link from "next/link";
 import { CheckoutClient } from "@/components/checkout/checkout-client";
 import { getCartSummary } from "@/lib/cart/summary";
 import { Button } from "@/components/ui/button";
+import { getMyAddresses } from "@/lib/account/addresses";
+import { getCurrentUser } from "@/lib/auth/user";
 
 export const metadata = { title: "Checkout" };
 
 export default async function CheckoutPage() {
-  const summary = await getCartSummary();
+  const [summary, savedAddresses, user] = await Promise.all([getCartSummary(), getMyAddresses(), getCurrentUser()]);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
 
@@ -32,6 +34,8 @@ export default async function CheckoutPage() {
         currency={summary.currency}
         publishableKey={pk}
         siteUrl={siteUrl}
+        savedAddresses={savedAddresses}
+        defaultEmail={user?.email ?? ""}
       />
     </div>
   );

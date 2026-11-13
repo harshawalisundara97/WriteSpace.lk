@@ -800,6 +800,32 @@ insert into bundle_items (bundle_id, product_id, variant_id, quantity, position)
   ('55555555-0000-0000-0000-000000000003','33333333-0000-0000-0000-000000000001','44444444-0000-0000-0000-000000000001',1,2)
 on conflict do nothing;
 
+-- ========== 0011_addresses ==========
+-- Saved delivery address book, per signed-in customer. Single-default is kept by
+-- the server action (unset others on save). No seed rows: addresses reference
+-- auth-backed customers, which this file does not create.
+create table if not exists addresses (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references customers(id) on delete cascade,
+  label text,
+  full_name text not null,
+  phone text not null,
+  line1 text not null,
+  line2 text,
+  city text not null,
+  postal_code text,
+  country text not null default 'LK',
+  is_default boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_addresses_customer on addresses(customer_id);
+create trigger t_addresses_updated before update on addresses for each row execute function set_updated_at();
+
+alter table addresses enable row level security;
+create policy address_owner_all on addresses for all
+  using (customer_id = auth.uid()) with check (customer_id = auth.uid());
+
 -- ========== make yourself an admin ==========
 -- AFTER you register an account in the app, run this (replace the email):
 -- insert into admin_users (id, role)
