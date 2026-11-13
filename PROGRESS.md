@@ -32,6 +32,8 @@ Verified this session (built, typecheck + `next build` pass, browser-checked):
 - **Stationery product specs** (GSM, paper size, ruling, sheet count, colour) — product-level `specs` jsonb + shared `lib/catalog/specs.ts`, admin form inputs, and a PDP spec table; schema in step across migrations/seed/setup (TASK-005, _commit pending_)
 - **Spec-based catalog filters** (GSM, paper size, ruling, sheet count, colour) — multi-select facets on `/products` + `/c/[category]`, one URL param per spec key, counts from `computeFacets`, reusing `SPEC_FIELDS` (TASK-006, _commit pending_)
 - **Bundles & school packs** (`/bundles` + `/bundles/[slug]`) — curated/grade packs of existing products with an optional bundle price + “Add all to cart” (`addManyToCart`); `bundles`/`bundle_items` schema in step across migrations/seed/setup, header + footer “School packs” links, sitemap entries (TASK-007, _commit pending_)
+- **Bulk ordering** (tiered pricing + bulk qty UI) — per-product `price_tiers` jsonb (`{min_qty, discount_bps}`, % off each unit) via shared `lib/catalog/pricing-tiers.ts`; **enforced server-side in `getCartLines`** so cart/totals/checkout charge the tiered price; PDP “Buy more, save more” table + live per-unit price + typeable qty; admin “Bulk pricing” form section; schema in step across migrations/seed/setup (TASK-008, _commit pending_)
+- **Delivery method at checkout** (Standard / Express / Store pickup) — methods + fee rules in shared `lib/checkout/delivery.ts` (express = flat + LKR 400, never waived; pickup free, no address); `computeTotals` prices the chosen method, `createCheckout` re-validates it and stores `orders.delivery_method` (migration `0010` + `setup.sql`); order detail/invoice name the method. Typecheck, unit tests and build pass; **checkout selector UI not browser-checked** (cart is disabled in demo mode) (TASK-009, _commit pending_)
 
 Committed earlier (not re-verified this session): checkout/payments, accounts,
 admin dashboard, demo mode, PDP/reviews/quick-view/search, faceted filters,
@@ -40,7 +42,7 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 
 ## Current work
 
-- TASK-007 (bundles & school packs) — **done & verified this session; commit pending.** TASK-003/004/005/006 and TASK-007 are all still uncommitted from their sessions; all five are in the working tree. Next: TASK-008 (bulk ordering — tiered pricing + bulk qty UI), which also builds on TASK-005's specs.
+- TASK-009 (delivery method selection) — **done this session; commit pending.** Checkout selector + a real checkout run still need a browser check once Supabase is connected. TASK-003 to TASK-009 are all still uncommitted in the working tree. Next: TASK-010 (saved delivery address book in account).
   See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap.
 
 ## Pending tasks
@@ -54,7 +56,7 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 ## Known issues / limitations
 
 - In demo mode, admin **writes** no-op or show an error toast by design (no backend) — not a bug.
-- Existing Supabase projects need migrations `0005_store_contact`, `0006_wishlist`, `0007_product_specs` and `0008_bundles` run (new columns/tables).
+- Existing Supabase projects need migrations `0005_store_contact`, `0006_wishlist`, `0007_product_specs`, `0008_bundles`, `0009_price_tiers` and `0010_delivery_method` run (new columns/tables).
 - The shared preview link is a quick tunnel: ephemeral and its URL rotates on restart.
 - (Unknown) Stripe LKR support and whether PayHere is the day-1 gateway — open decision in ARCHITECTURE.md §12.
 

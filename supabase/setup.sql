@@ -86,6 +86,7 @@ create table products (
   status product_status not null default 'draft',
   images jsonb not null default '[]'::jsonb,       -- [{url, alt}] in Supabase Storage
   specs jsonb not null default '{}'::jsonb,
+  price_tiers jsonb not null default '[]'::jsonb,  -- [{min_qty, discount_bps}] bulk tiers
   seo_title text,
   seo_description text,
   search_vector tsvector,
@@ -236,6 +237,7 @@ create table orders (
   tax_minor int not null default 0,
   total_minor int not null default 0,
   shipping_address jsonb,
+  delivery_method text not null default 'standard' check (delivery_method in ('standard', 'express', 'pickup')),  -- TASK-009
   tracking_number text,
   notes text,
   idempotency_key text unique,
@@ -652,10 +654,10 @@ begin
 
   -- 3. Dotted notebook (all)
   pid := '33333333-0000-0000-0000-000000000003';
-  insert into products (id, category_id, name, slug, description, brand, age_group, status, images, specs)
+  insert into products (id, category_id, name, slug, description, brand, age_group, status, images, specs, price_tiers)
   values (pid,'11111111-0000-0000-0000-000000000002','A5 Dotted Notebook','a5-dotted-notebook',
     '160gsm bleed-proof dotted pages, lay-flat binding, elastic closure. Ideal for bullet journaling.',
-    'PaperCo','all','published','[{"url":"/images/dotted-notebook.jpg","alt":"A5 dotted notebook"}]','{"gsm":160,"paper_size":"A5","ruling":"Dotted","sheet_count":160}')
+    'PaperCo','all','published','[{"url":"/images/dotted-notebook.jpg","alt":"A5 dotted notebook"}]','{"gsm":160,"paper_size":"A5","ruling":"Dotted","sheet_count":160}','[{"min_qty":5,"discount_bps":500},{"min_qty":10,"discount_bps":1000}]')
   on conflict (slug) do nothing;
   insert into product_variants (id, product_id, sku, name, options, price_minor) values
     ('44444444-0000-0000-0000-000000000013',pid,'WS-NB-A5-TEAL','A5 / Teal','{"size":"A5","color":"Teal"}',150000),

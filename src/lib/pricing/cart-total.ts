@@ -4,12 +4,15 @@
 import type { CartLine, Promotion } from "@/lib/types";
 import { applyPromotions, type PromoContext, type AppliedPromo } from "./promotions-engine";
 import { applyPercent, clampMinor } from "./money";
+import { deliveryFee, DEFAULT_DELIVERY_METHOD, type DeliveryMethodId } from "@/lib/checkout/delivery";
 
 export interface ShippingTaxSettings {
   flat_shipping_minor: number;
   free_shipping_threshold_minor: number | null;
   /** Tax in basis points. 0 = no tax. */
   tax_rate_bps: number;
+  /** Chosen delivery method; defaults to standard (cart / pre-selection). */
+  delivery_method?: DeliveryMethodId;
 }
 
 export interface CartTotals {
@@ -32,12 +35,18 @@ export function computeTotals(
   const promo = applyPromotions(lines, promotions, enteredCode, ctx);
   const discountedSubtotal = clampMinor(promo.subtotal_minor - promo.discount_minor);
 
-  // Shipping: free if a promo grants it, or threshold met, else flat.
+  // Shipping: standard is free if a promo grants it or the threshold is met,
+  // else flat; express / pickup are priced by deliveryFee().
   const thresholdMet =
     settings.free_shipping_threshold_minor != null &&
     discountedSubtotal >= settings.free_shipping_threshold_minor;
   const shipping =
-    lines.length === 0 || promo.free_shipping || thresholdMet ? 0 : settings.flat_shipping_minor;
+    lines.length === 0
+      ? 0
+      : deliveryFee(settings.delivery_method ?? DEFAULT_DELIVERY_METHOD, {
+          flat_shipping_minor: settings.flat_shipping_minor,
+          standardFree: promo.free_shipping || thresholdMet,
+        });
 
   // Tax applied on discounted subtotal (not shipping) — adjust per jurisdiction.
   const tax = settings.tax_rate_bps > 0 ? applyPercent(discountedSubtotal, settings.tax_rate_bps / 100) : 0;

@@ -85,7 +85,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               </dl>
             </div>
           )}
-          <div className="mt-6"><PdpBuy variants={variants} currency={currency} /></div>
+          <div className="mt-6"><PdpBuy variants={variants} currency={currency} tiers={product.price_tiers} /></div>
         </div>
       </div>
 

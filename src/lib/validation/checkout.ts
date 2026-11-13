@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DELIVERY_METHOD_IDS, DEFAULT_DELIVERY_METHOD, deliveryMethod } from "@/lib/checkout/delivery";
 
 export const addressSchema = z.object({
   full_name: z.string().min(2, "Enter your name").max(120),
@@ -13,3 +14,19 @@ export const addressSchema = z.object({
 });
 
 export type AddressInput = z.infer<typeof addressSchema>;
+
+// Checkout = contact + address + delivery method. Store pickup needs no
+// delivery address, so line1 / city are only required when the method ships.
+export const checkoutSchema = addressSchema
+  .extend({
+    line1: z.string().max(200).optional().or(z.literal("")),
+    city: z.string().max(100).optional().or(z.literal("")),
+    delivery_method: z.enum(DELIVERY_METHOD_IDS).default(DEFAULT_DELIVERY_METHOD),
+  })
+  .superRefine((v, ctx) => {
+    if (!deliveryMethod(v.delivery_method).needsAddress) return;
+    if ((v.line1 ?? "").trim().length < 3) ctx.addIssue({ code: "custom", path: ["line1"], message: "Enter your address" });
+    if ((v.city ?? "").trim().length < 2) ctx.addIssue({ code: "custom", path: ["city"], message: "Enter your city" });
+  });
+
+export type CheckoutInput = z.input<typeof checkoutSchema>;

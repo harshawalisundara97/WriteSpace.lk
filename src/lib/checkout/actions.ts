@@ -6,7 +6,8 @@ import { getCartLines, getPromoCode } from "@/lib/cart/actions";
 import { getActivePromotions, getStoreSettings } from "@/lib/catalog/queries";
 import { computeTotals } from "@/lib/pricing/cart-total";
 import { getPaymentProvider } from "@/lib/payments";
-import { addressSchema } from "@/lib/validation/checkout";
+import { checkoutSchema } from "@/lib/validation/checkout";
+import { deliveryMethod } from "@/lib/checkout/delivery";
 
 const HOLD_MINUTES = 15;
 
@@ -25,11 +26,15 @@ export interface CheckoutResult {
 }
 
 export async function createCheckout(raw: unknown): Promise<CheckoutResult> {
-  const parsed = addressSchema.safeParse(raw);
+  const parsed = checkoutSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid address" };
   }
-  const address = parsed.data;
+  const { delivery_method, ...contact } = parsed.data;
+  // Store pickup carries no delivery address — keep contact details only.
+  const address = deliveryMethod(delivery_method).needsAddress
+    ? contact
+    : { ...contact, line1: "", line2: "", city: "", postal_code: "" };
 
   const db = createAdminClient();
   const supabase = await createClient();
@@ -53,6 +58,7 @@ export async function createCheckout(raw: unknown): Promise<CheckoutResult> {
       flat_shipping_minor: settings.flat_shipping_minor,
       free_shipping_threshold_minor: settings.free_shipping_threshold_minor,
       tax_rate_bps: settings.tax_rate_bps,
+      delivery_method,
     },
     code,
   );
@@ -81,6 +87,7 @@ export async function createCheckout(raw: unknown): Promise<CheckoutResult> {
       tax_minor: totals.tax_minor,
       total_minor: totals.total_minor,
       shipping_address: address,
+      delivery_method,
       idempotency_key: idempotencyKey,
       reserved_until: reservedUntil,
     })

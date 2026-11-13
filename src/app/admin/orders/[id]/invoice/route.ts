@@ -2,6 +2,7 @@ import { getAdminContext } from "@/lib/auth/guards";
 import { getAdminOrder } from "@/lib/admin/queries";
 import { getStoreSettings } from "@/lib/catalog/queries";
 import { formatMoney } from "@/lib/pricing/money";
+import { deliveryMethod } from "@/lib/checkout/delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     <div class="totals">
       <div><span>Subtotal</span><span>${formatMoney(order.subtotal_minor, cur)}</span></div>
       ${order.discount_minor > 0 ? `<div><span>Discount</span><span>− ${formatMoney(order.discount_minor, cur)}</span></div>` : ""}
-      <div><span>Shipping</span><span>${order.shipping_minor === 0 ? "Free" : formatMoney(order.shipping_minor, cur)}</span></div>
+      <div><span>${deliveryMethod(order.delivery_method).label}</span><span>${order.shipping_minor === 0 ? "Free" : formatMoney(order.shipping_minor, cur)}</span></div>
       ${order.tax_minor > 0 ? `<div><span>Tax</span><span>${formatMoney(order.tax_minor, cur)}</span></div>` : ""}
       <div class="grand"><span>Total</span><span>${formatMoney(order.total_minor, cur)}</span></div>
     </div>

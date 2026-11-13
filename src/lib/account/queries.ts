@@ -22,7 +22,7 @@ export async function getMyOrder(id: string) {
   const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("id,order_number,status,subtotal_minor,discount_minor,shipping_minor,tax_minor,total_minor,currency,shipping_address,tracking_number,created_at,placed_at")
+    .select("id,order_number,status,subtotal_minor,discount_minor,shipping_minor,tax_minor,total_minor,currency,shipping_address,delivery_method,tracking_number,created_at,placed_at")
     .eq("id", id)
     .maybeSingle();
   if (!order) return null;

@@ -18,8 +18,8 @@ Status legend: ☐ pending · ◐ in progress · ☑ completed.
 | TASK-005 | Stationery product specifications (GSM, paper size, ruling, sheet count, colour) — schema + PDP spec table | — | ☑ |
 | TASK-006 | Spec-based catalog filters for the new attributes | 005 | ☑ |
 | TASK-007 | Bundles & school packs (curated / grade packs) | 005 | ☑ |
-| TASK-008 | Bulk ordering (tiered pricing + bulk qty UI) | 005 | ☐ |
-| TASK-009 | Delivery method selection at checkout (standard / express / pickup) | — | ☐ |
+| TASK-008 | Bulk ordering (tiered pricing + bulk qty UI) | 005 | ☑ |
+| TASK-009 | Delivery method selection at checkout (standard / express / pickup) | — | ☑ |
 | TASK-010 | Saved delivery address book in account | 009 | ☐ |
 
 ---
@@ -287,5 +287,176 @@ and the SQL, and managed by SQL for now.
 **Notes**
 - Admin CRUD for bundles is deferred (SQL-managed for now), as a focused customer-facing follow-up.
 - `addManyToCart` skips (rather than fails) out-of-stock items and reports the count; `bundlePricing` clamps the saving at zero so a curated price above the items total never shows a negative saving.
+
+**Commit:** _pending_
+
+
+
+---
+
+## TASK-008 — Bulk ordering (tiered pricing + bulk qty UI) ☑
+
+**Objective:** Let a product offer a lower unit price as quantity rises (volume
+discounts for schools / offices / resellers) — shown on the PDP and actually
+charged at checkout — with a bulk-friendly quantity input.
+
+**Design:** price tiers live in one `jsonb` column on `products` (`price_tiers`),
+mirroring the `specs`/`images` jsonb pattern. Each tier is `{min_qty,
+discount_bps}` — a percentage off (basis points, like `tax_rate_bps`) applied to
+**each variant's own base price**, so one tier set works across variants at
+different prices. The field helpers (normalize/select/effective-price/display)
+are defined once in `src/lib/catalog/pricing-tiers.ts` and shared by the PDP, the
+cart (server-enforced unit price) and the admin form. Pricing is enforced in
+`getCartLines` (the single server-trusted place unit price is resolved), so the
+cart, totals, promotions and the order snapshot all use the tiered price; the
+PDP display matches what is charged. The tier discount applies to the line unit
+price first, then the existing promotion engine runs on the resulting subtotal
+(promo order unchanged).
+
+**Files added**
+- `src/lib/catalog/pricing-tiers.ts` — `PriceTier` type, `normalizeTiers()`
+  (drop invalid, sort by min_qty, dedupe), `tierForQty()`, `tierUnitPrice()`
+  (clamped ≥ 0, reuses `applyPercent`), `hasTiers()` and `tierRows()`
+  (display-ready rows for the PDP table).
+- `supabase/migrations/0009_price_tiers.sql` — `alter table products add column
+  if not exists price_tiers jsonb not null default '[]'::jsonb`.
+
+**Files modified**
+- `src/lib/types.ts` — `Product.price_tiers: PriceTier[]`; re-exports `PriceTier`.
+- `src/lib/catalog/queries.ts` — `price_tiers` added to `PRODUCT_SELECT` and the
+  two `searchProducts` selects.
+- `src/lib/admin/catalog-queries.ts` — `price_tiers` added to the admin `SELECT`.
+- `src/lib/validation/product.ts` — `price_tiers` array added to `productSchema`
+  (min_qty ≥ 2, discount_bps 1–10000, defaults `[]`).
+- `src/lib/admin/product-actions.ts` — `saveProduct` persists `normalizeTiers(p.price_tiers)` on the product row.
+- `src/lib/cart/actions.ts` — `getCartLines` fetches `price_tiers` and sets
+  `unit_price_minor = tierUnitPrice(base, line.quantity, tiers)`; keeps the base
+  as `compare_at_minor` when a tier applies so the saving shows.
+- `src/components/store/pdp-buy.tsx` — a "Buy more, save more" tier table
+  (1+ / each breakpoint, unit price + save %), a live "You pay X each" as the qty
+  crosses a breakpoint (active row highlighted), and a typeable bulk quantity
+  input (clamped to available), accepts a `tiers` prop.
+- `src/app/products/[slug]/page.tsx` — passes `product.price_tiers` to `PdpBuy`.
+- `src/components/admin/product-form.tsx` — a "Bulk pricing" section (add/remove
+  rows: min qty + % off); submit builds a cleaned `price_tiers` payload (bps).
+- `src/lib/demo/data.ts` — `product()` helper takes optional `tiers`; the A5
+  Dotted Notebook carries `[{min_qty:5,discount_bps:500},{min_qty:10,discount_bps:1000}]`.
+- `supabase/seed.sql` + `supabase/setup.sql` — `price_tiers` column added to the
+  products DDL (setup) and the dotted-notebook seed row (both), keeping the three
+  schema copies in step.
+
+**Acceptance criteria** (all met)
+- A product with tiers shows a tier table on the PDP; raising the qty to a
+  breakpoint lowers the shown unit price and adds to cart at that effective price.
+- Cart / totals / checkout charge the tiered unit price (server-enforced in
+  `getCartLines`, consumed by `computeTotals`, the promo engine and the order
+  snapshot); a product with no tiers is unchanged.
+- Admins set/edit tiers from the product form (no-op write in demo mode).
+- Schema in step across `migrations/*`, `seed.sql` and `setup.sql`; demo mode
+  renders the table + tiered pricing without a backend.
+
+**Tests performed**
+- `npm run typecheck` — pass.
+- `npm run build` — pass; `/products/[slug]` builds as a dynamic/ISR function (ƒ).
+- Browser check (demo mode): `/products/a5-dotted-notebook` shows the "Buy more,
+  save more" table — 1+ LKR 1,500.00 · 5+ LKR 1,425.00 (Save 5%) · 10+ LKR
+  1,350.00 (Save 10%); setting qty 10 updates the header to "You pay LKR 1,350.00
+  each" and highlights the 10+ row. `/admin/products/p3` shows the Bulk pricing
+  section pre-filled from the saved tiers (5 → 5%, 10 → 10%). (The only console
+  error was the known stale-dev-process hydration mismatch on the TASK-007
+  `/bundles` header link — not from this task and not present in the clean
+  production build; cleared by a dev restart.)
+
+**Notes**
+- Tiers are a percentage off each variant's base price (not absolute per-qty
+  prices), so one tier set is correct across multi-variant products.
+- Number specs aside, this is the first product attribute that changes the
+  charged price, so enforcement lives server-side in `getCartLines`; the PDP is
+  display only and never the source of truth.
+- Admin CRUD is the product-form section only (no separate bulk-pricing admin),
+  consistent with specs.
+
+**Commit:** _pending_
+
+
+---
+
+## TASK-009 — Delivery method selection at checkout ☑
+
+**Objective:** Let the customer choose Standard delivery, Express delivery or
+Store pickup at checkout, with the fee reflected in the order total, charged
+server-side and recorded on the order.
+
+**Design:** methods, copy and fee rules live in one module,
+`src/lib/checkout/delivery.ts` (`DELIVERY_METHODS`, `deliveryFee()`), mirroring
+the `specs.ts` / `pricing-tiers.ts` single-source pattern — no new store
+settings or admin fields. Fees:
+- **Standard** — the store `flat_shipping_minor`; free over the free-shipping
+  threshold or with a free-shipping promo (unchanged behaviour, and the default).
+- **Express** — flat fee + `EXPRESS_SURCHARGE_MINOR` (LKR 400.00); a paid
+  upgrade, **never** waived by the threshold or a free-shipping promo.
+- **Pickup** — always free; no delivery address is collected.
+
+`computeTotals` takes an optional `delivery_method` on its settings argument
+(default standard, so the cart/drawer are unchanged). `getCartSummary` returns
+`deliveryTotals` (shipping + total per method, server-computed) so the checkout
+switches methods with no client price math; `createCheckout` re-validates the
+method (`checkoutSchema`), recomputes totals with it and stores it in the new
+`orders.delivery_method` column.
+
+**Files added**
+- `src/lib/checkout/delivery.ts` — `DeliveryMethodId`, `DELIVERY_METHODS`,
+  `DELIVERY_METHOD_IDS`, `DEFAULT_DELIVERY_METHOD`, `EXPRESS_SURCHARGE_MINOR`,
+  `deliveryMethod()` (unknown/missing → standard) and `deliveryFee()`.
+- `supabase/migrations/0010_delivery_method.sql` — `orders.delivery_method text
+  not null default 'standard'` with a check constraint.
+
+**Files modified**
+- `src/lib/pricing/cart-total.ts` — `ShippingTaxSettings.delivery_method?`;
+  shipping resolved through `deliveryFee()`.
+- `src/lib/validation/checkout.ts` — `checkoutSchema` (address + `delivery_method`;
+  `line1`/`city` required only when the method ships). `addressSchema` unchanged.
+- `src/lib/cart/summary.ts` — `deliveryTotals` per method.
+- `src/lib/checkout/actions.ts` — parses `checkoutSchema`, prices with the chosen
+  method, blanks address lines for pickup, writes `delivery_method` on the order.
+- `src/components/checkout/checkout-client.tsx` — delivery-method radio cards
+  (label, ETA, fee); address fields hidden for pickup; order summary shipping row
+  + total follow the selection.
+- `src/app/checkout/page.tsx` — passes `deliveryTotals`.
+- `src/app/account/orders/[id]/page.tsx`, `src/app/admin/orders/[id]/page.tsx`,
+  `src/app/admin/orders/[id]/invoice/route.ts` — shipping row labelled with the
+  method; address block tolerates a pickup order (no address lines).
+- `src/lib/account/queries.ts` — `delivery_method` added to the order select.
+- `src/lib/demo/data.ts` — optional `delivery_method` on `DemoOrder`.
+- `supabase/setup.sql` — `delivery_method` column in the `orders` DDL (`seed.sql`
+  has no orders DDL or rows, so needs no change).
+- `tests/unit/pricing.test.ts` — delivery-method fee + `checkoutSchema` tests.
+
+**Acceptance criteria**
+- Checkout offers Standard / Express / Pickup with each fee shown; choosing one
+  updates the summary shipping row and total. _(implemented; not browser-checked — see Tests)_
+- The server recomputes the total with the chosen method and rejects unknown
+  methods; the method is stored on the order. _(met — unit-tested schema + totals)_
+- Pickup needs no address; delivery methods still require one. _(met — unit-tested)_
+- Order detail (account + admin) and the invoice name the method; older orders
+  read as Standard delivery. _(met — browser-checked in demo mode)_
+
+**Tests performed**
+- `npm run typecheck` — pass.
+- `npm test` — pass (26 tests; 7 new: express = flat + surcharge, express not
+  waived by threshold/promo, pickup free, empty cart, address required unless
+  pickup, unknown method rejected, missing method defaults to standard).
+- `npm run build` — pass; `/checkout` and the order routes build as dynamic (ƒ).
+- Browser check (demo mode): `/admin/orders/o1` shows “Standard delivery” on the
+  shipping row and the address card; no console errors.
+- **Not verified:** the checkout selector UI and a real `createCheckout` run.
+  The cart is disabled in demo mode, so `/checkout` only renders its empty-cart
+  state without Supabase. Check both once a backend is connected.
+
+**Notes**
+- Existing Supabase projects must run `0010_delivery_method`.
+- The express surcharge and the delivery ETAs are code constants in
+  `delivery.ts`; the copy on `/shipping` and `/faq` was not changed.
+- Order emails do not show a shipping line, so they were left as is.
 
 **Commit:** _pending_

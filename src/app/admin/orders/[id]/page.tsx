@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/store/status-badge";
 import { PageHeader, Card } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/pricing/money";
+import { deliveryMethod } from "@/lib/checkout/delivery";
 import type { OrderStatus } from "@/lib/types";
 
 export default async function AdminOrderDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -47,7 +48,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
             <dl className="mt-4 space-y-1 border-t border-line pt-4 text-sm">
               <div className="flex justify-between"><dt className="text-ink-soft">Subtotal</dt><dd>{formatMoney(order.subtotal_minor, order.currency)}</dd></div>
               {order.discount_minor > 0 && <div className="flex justify-between"><dt className="text-ink-soft">Discount</dt><dd className="text-accent">− {formatMoney(order.discount_minor, order.currency)}</dd></div>}
-              <div className="flex justify-between"><dt className="text-ink-soft">Shipping</dt><dd>{order.shipping_minor === 0 ? "Free" : formatMoney(order.shipping_minor, order.currency)}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-soft">{deliveryMethod(order.delivery_method).label}</dt><dd>{order.shipping_minor === 0 ? "Free" : formatMoney(order.shipping_minor, order.currency)}</dd></div>
               {order.tax_minor > 0 && <div className="flex justify-between"><dt className="text-ink-soft">Tax</dt><dd>{formatMoney(order.tax_minor, order.currency)}</dd></div>}
               <div className="flex justify-between border-t border-line pt-2 font-semibold"><dt>Total</dt><dd>{formatMoney(order.total_minor, order.currency)}</dd></div>
             </dl>
@@ -55,8 +56,8 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
 
           {addr && (
             <Card>
-              <h2 className="mb-2 font-medium">Delivery</h2>
-              <p className="text-sm text-ink-soft">{addr.full_name}<br />{addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}<br />{addr.city} {addr.postal_code}<br />{addr.phone}</p>
+              <h2 className="mb-2 font-medium">{deliveryMethod(order.delivery_method).label}</h2>
+              <p className="text-sm text-ink-soft">{addr.full_name}<br />{addr.line1 && <>{addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}<br />{addr.city} {addr.postal_code}<br /></>}{addr.phone}</p>
             </Card>
           )}
 

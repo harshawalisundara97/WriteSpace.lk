@@ -12,7 +12,7 @@ import {
 import { SPEC_FIELDS, specFilterLabel, type SpecKey, type ProductSpecs } from "@/lib/catalog/specs";
 
 const PRODUCT_SELECT =
-  "id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,created_at," +
+  "id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,price_tiers,created_at," +
   "product_variants(id,product_id,sku,name,options,price_minor,compare_at_minor,currency,position,is_active," +
   "inventory(variant_id,on_hand,reserved,low_stock_threshold))";
 
@@ -253,7 +253,7 @@ export async function searchProducts(term: string, limit = 10): Promise<Product[
   // websearch_to_tsquery handles multi-word + partial gracefully; trigram backs typos via ilike fallback.
   const { data } = await supabase
     .from("products")
-    .select("id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,created_at")
+    .select("id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,price_tiers,created_at")
     .eq("status", "published")
     .textSearch("search_vector", cleaned, { type: "websearch", config: "simple" })
     .limit(limit);
@@ -261,7 +261,7 @@ export async function searchProducts(term: string, limit = 10): Promise<Product[
   // typo-tolerant fallback
   const { data: fuzzy } = await supabase
     .from("products")
-    .select("id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,created_at")
+    .select("id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,price_tiers,created_at")
     .eq("status", "published")
     .ilike("name", `%${cleaned}%`)
     .limit(limit);

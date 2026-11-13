@@ -1,5 +1,5 @@
 import type {
-  Banner, Bundle, BundleItem, BundleWithItems, Category, Collection, ProductSpecs, ProductWithVariants, Promotion,
+  Banner, Bundle, BundleItem, BundleWithItems, Category, Collection, PriceTier, ProductSpecs, ProductWithVariants, Promotion,
 } from "@/lib/types";
 
 // In-repo demo dataset mirroring supabase/seed.sql, used when Supabase isn't
@@ -26,10 +26,11 @@ function product(
   age: "kids" | "adults" | "all", desc: string,
   variants: { sku: string; name?: string; price: number; compareAt?: number; stock: number }[],
   spec: ProductSpecs = {},
+  tiers: PriceTier[] = [],
 ): ProductWithVariants {
   return {
     id, category_id: cat, name, slug, description: desc, brand, age_group: age,
-    status: "published", images: [], seo_title: null, seo_description: null, specs: spec, created_at: now,
+    status: "published", images: [], seo_title: null, seo_description: null, specs: spec, price_tiers: tiers, created_at: now,
     product_variants: variants.map((v, i) => ({
       id: `${id}-v${i}`, product_id: id, sku: v.sku, name: v.name ?? null, options: {},
       price_minor: v.price, compare_at_minor: v.compareAt ?? null, currency: "LKR",
@@ -48,7 +49,7 @@ export const demoProducts: ProductWithVariants[] = [
     [{ sku: "WS-FP-BLK", name: "Black / Fine", price: 345000, stock: 40 }]),
   product("p3", "c2", "A5 Dotted Notebook", "a5-dotted-notebook", "PaperCo", "all",
     "160gsm bleed-proof dotted pages, lay-flat binding, elastic closure. Ideal for bullet journaling.",
-    [{ sku: "WS-NB-A5-TEAL", name: "A5 / Teal", price: 150000, stock: 75 }, { sku: "WS-NB-A5-BLK", name: "A5 / Black", price: 150000, stock: 3 }], { gsm: 160, paper_size: "A5", ruling: "Dotted", sheet_count: 160 }),
+    [{ sku: "WS-NB-A5-TEAL", name: "A5 / Teal", price: 150000, stock: 75 }, { sku: "WS-NB-A5-BLK", name: "A5 / Black", price: 150000, stock: 3 }], { gsm: 160, paper_size: "A5", ruling: "Dotted", sheet_count: 160 }, [{ min_qty: 5, discount_bps: 500 }, { min_qty: 10, discount_bps: 1000 }]),
   product("p4", "c3", "Watercolour Paint Set (24)", "watercolour-set-24", "ArtLab", "all",
     "24 half-pans of vibrant, blendable watercolour with a travel brush. Non-toxic.",
     [{ sku: "WS-WC-24", name: "24 half-pans", price: 275000, compareAt: 320000, stock: 60 }]),
@@ -218,7 +219,7 @@ export interface DemoActivity { id: string; action: string; after: unknown; crea
 export interface DemoOrder {
   id: string; order_number: string; email: string; status: string; currency: string;
   subtotal_minor: number; discount_minor: number; shipping_minor: number; tax_minor: number; total_minor: number;
-  shipping_address: Record<string, string>; tracking_number: string | null; notes: string | null;
+  shipping_address: Record<string, string>; delivery_method?: string; tracking_number: string | null; notes: string | null;
   created_at: string; placed_at: string | null;
   items: DemoOrderItem[];
   payment: { id: string; provider: string; provider_payment_id: string | null; status: string; amount_minor: number; currency: string } | null;

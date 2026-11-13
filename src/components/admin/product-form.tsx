@@ -39,6 +39,9 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
     for (const f of SPEC_FIELDS) { const v = product?.specs?.[f.key]; if (v != null) init[f.key] = String(v); }
     return init;
   });
+  const [tiers, setTiers] = useState<{ minQty: string; pct: string }[]>(
+    (product?.price_tiers ?? []).map((t) => ({ minQty: String(t.min_qty), pct: String(t.discount_bps / 100) })),
+  );
 
   const [variants, setVariants] = useState<VariantRow[]>(
     product?.product_variants?.length
@@ -59,6 +62,9 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
   }
   function setV(i: number, patch: Partial<VariantRow>) {
     setVariants((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function setTier(i: number, patch: Partial<{ minQty: string; pct: string }>) {
+    setTiers((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -81,6 +87,9 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
       if (!raw) continue;
       specsPayload[f.key] = f.kind === "number" ? Number(raw) : raw;
     }
+    const tiersPayload = tiers
+      .map((t) => ({ min_qty: Math.trunc(Number(t.minQty)), discount_bps: Math.round(Number(t.pct) * 100) }))
+      .filter((t) => Number.isFinite(t.min_qty) && t.min_qty >= 2 && t.discount_bps >= 1 && t.discount_bps <= 10000);
     const payload = {
       id: product?.id,
       name, slug, description, brand,
@@ -88,6 +97,7 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
       age_group: ageGroup, status, images,
       seo_title: "", seo_description: "",
       specs: specsPayload,
+      price_tiers: tiersPayload,
       variants: variants.map((v) => ({
         id: v.id, sku: v.sku, name: v.name,
         price_minor: toMinor(Number(v.price || 0)),
@@ -151,6 +161,32 @@ export function ProductForm({ product, categories }: { product: ProductWithVaria
                 <input type={f.kind === "number" ? "number" : "text"} value={specs[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setSpecs((s) => ({ ...s, [f.key]: e.target.value }))} className="h-11 w-full rounded-xl border border-line bg-paper px-3" />
               )}
             </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-medium">Bulk pricing</p>
+          <Button size="sm" variant="outline" onClick={() => setTiers((r) => [...r, { minQty: "", pct: "" }])}>
+            <Plus className="h-4 w-4" /> Add tier
+          </Button>
+        </div>
+        <p className="mb-2 text-xs text-ink-soft">Quantity breakpoints with a % off each unit (e.g. min qty 10 → 10% off). Applies to every variant of this product.</p>
+        <div className="space-y-2">
+          {tiers.length === 0 && <p className="text-sm text-ink-soft">No bulk tiers.</p>}
+          {tiers.map((t, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 rounded-xl border border-line p-3">
+              <label className="block">
+                <span className="mb-1 block text-xs text-ink-soft">Min quantity</span>
+                <input type="number" min={2} placeholder="e.g. 10" value={t.minQty} onChange={(e) => setTier(i, { minQty: e.target.value })} className="h-9 w-full rounded-lg border border-line px-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs text-ink-soft">Discount %</span>
+                <input type="number" min={1} max={100} placeholder="e.g. 10" value={t.pct} onChange={(e) => setTier(i, { pct: e.target.value })} className="h-9 w-full rounded-lg border border-line px-2 text-sm" />
+              </label>
+              <button aria-label="Remove tier" onClick={() => setTiers((r) => r.filter((_, idx) => idx !== i))} className="justify-self-end pt-5"><Trash2 className="h-4 w-4 text-ink-soft" /></button>
+            </div>
           ))}
         </div>
       </div>

@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { CartLine } from "@/lib/types";
 import { hasSupabase } from "@/lib/env";
+import { normalizeTiers, tierUnitPrice, type PriceTier } from "@/lib/catalog/pricing-tiers";
 
 const CART_COOKIE = "ws_cart";
 const CODE_COOKIE = "ws_promo";
@@ -52,7 +53,7 @@ export async function getCartLines(): Promise<CartLine[]> {
     .from("cart_items")
     .select(
       "quantity,variant:product_variants(id,sku,name,price_minor,compare_at_minor," +
-        "inventory(on_hand,reserved),product:products(id,name,slug,images))",
+        "inventory(on_hand,reserved),product:products(id,name,slug,images,price_tiers))",
     )
     .eq("cart_id", cartId);
 
@@ -61,7 +62,7 @@ export async function getCartLines(): Promise<CartLine[]> {
     variant: {
       id: string; sku: string; name: string | null; price_minor: number; compare_at_minor: number | null;
       inventory: { on_hand: number; reserved: number } | null;
-      product: { id: string; name: string; slug: string; images: { url: string; alt?: string }[] } | null;
+      product: { id: string; name: string; slug: string; images: { url: string; alt?: string }[]; price_tiers: PriceTier[] | null } | null;
     } | null;
   };
 
@@ -71,6 +72,9 @@ export async function getCartLines(): Promise<CartLine[]> {
       const v = r.variant!;
       const p = v.product!;
       const avail = (v.inventory?.on_hand ?? 0) - (v.inventory?.reserved ?? 0);
+      // Bulk pricing: effective unit price for this line's quantity (server-trusted).
+      const base = v.price_minor;
+      const unit = tierUnitPrice(base, r.quantity, normalizeTiers(p.price_tiers));
       return {
         variant_id: v.id,
         product_id: p.id,
@@ -79,8 +83,8 @@ export async function getCartLines(): Promise<CartLine[]> {
         variant_name: v.name,
         sku: v.sku,
         image: p.images?.[0] ?? null,
-        unit_price_minor: v.price_minor,
-        compare_at_minor: v.compare_at_minor,
+        unit_price_minor: unit,
+        compare_at_minor: v.compare_at_minor ?? (unit < base ? base : null),
         quantity: r.quantity,
         available: avail,
       } satisfies CartLine;

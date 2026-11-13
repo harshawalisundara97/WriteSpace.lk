@@ -1,6 +1,8 @@
 // Domain row types (hand-maintained; mirror supabase/migrations).
 import type { ProductSpecs } from "@/lib/catalog/specs";
+import type { PriceTier } from "@/lib/catalog/pricing-tiers";
 export type { ProductSpecs } from "@/lib/catalog/specs";
+export type { PriceTier } from "@/lib/catalog/pricing-tiers";
 
 export type AgeGroup = "kids" | "adults" | "all";
 export type ProductStatus = "draft" | "published";
@@ -68,6 +70,7 @@ export interface Product {
   seo_title: string | null;
   seo_description: string | null;
   specs: ProductSpecs;
+  price_tiers: PriceTier[];
   created_at: string;
 }
 

@@ -28,6 +28,7 @@ export default async function CheckoutPage() {
       <CheckoutClient
         lines={summary.lines}
         totals={summary.totals}
+        deliveryTotals={summary.deliveryTotals}
         currency={summary.currency}
         publishableKey={pk}
         siteUrl={siteUrl}

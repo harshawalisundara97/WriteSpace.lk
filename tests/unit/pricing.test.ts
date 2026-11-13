@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { applyPromotions } from "@/lib/pricing/promotions-engine";
 import { computeTotals } from "@/lib/pricing/cart-total";
 import type { CartLine, Promotion } from "@/lib/types";
+import { checkoutSchema } from "@/lib/validation/checkout";
 
 function line(price: number, qty: number): CartLine {
   return {
@@ -136,5 +137,49 @@ describe("cart totals", () => {
   it("empty cart has no shipping", () => {
     const t = computeTotals([], [], settings);
     expect(t.total_minor).toBe(0);
+  });
+});
+
+describe("delivery methods", () => {
+  it("defaults to standard", () => {
+    const t = computeTotals([line(100000, 1)], [], { ...settings, delivery_method: "standard" });
+    expect(t.shipping_minor).toBe(computeTotals([line(100000, 1)], [], settings).shipping_minor);
+  });
+
+  it("express = flat + surcharge", () => {
+    const t = computeTotals([line(100000, 1)], [], { ...settings, delivery_method: "express" });
+    expect(t.shipping_minor).toBe(75000);
+    expect(t.total_minor).toBe(175000);
+  });
+
+  it("express is not waived by the threshold or a free-shipping promo", () => {
+    const over = computeTotals([line(500000, 1)], [], { ...settings, delivery_method: "express" });
+    expect(over.shipping_minor).toBe(75000);
+    const promoed = computeTotals([line(100000, 1)], [promo({ type: "free_shipping" })], { ...settings, delivery_method: "express" });
+    expect(promoed.shipping_minor).toBe(75000);
+  });
+
+  it("pickup is always free", () => {
+    const t = computeTotals([line(100000, 1)], [], { ...settings, delivery_method: "pickup" });
+    expect(t.shipping_minor).toBe(0);
+    expect(t.total_minor).toBe(100000);
+  });
+
+  it("empty cart has no express fee", () => {
+    expect(computeTotals([], [], { ...settings, delivery_method: "express" }).total_minor).toBe(0);
+  });
+
+  const contact = { full_name: "Test Buyer", email: "buyer@example.com", phone: "0771234567" };
+
+  it("requires an address for delivery but not for pickup", () => {
+    expect(checkoutSchema.safeParse({ ...contact, delivery_method: "standard" }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...contact, delivery_method: "pickup" }).success).toBe(true);
+    expect(checkoutSchema.safeParse({ ...contact, line1: "42 Galle Road", city: "Colombo", delivery_method: "express" }).success).toBe(true);
+  });
+
+  it("rejects unknown methods and defaults a missing one to standard", () => {
+    expect(checkoutSchema.safeParse({ ...contact, delivery_method: "drone" }).success).toBe(false);
+    const r = checkoutSchema.safeParse({ ...contact, line1: "42 Galle Road", city: "Colombo" });
+    expect(r.success && r.data.delivery_method).toBe("standard");
   });
 });

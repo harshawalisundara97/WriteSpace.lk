@@ -30,6 +30,10 @@ export const productSchema = z.object({
     sheet_count: z.number().int().min(0).max(100000).nullable().optional(),
     colour: z.string().max(60).nullable().optional().or(z.literal("")),
   }).default({}),
+  price_tiers: z.array(z.object({
+    min_qty: z.number().int().min(2).max(100000),
+    discount_bps: z.number().int().min(1).max(10000),
+  })).default([]),
   variants: z.array(variantSchema).min(1, "Add at least one variant"),
 });
 

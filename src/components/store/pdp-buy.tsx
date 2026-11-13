@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart/cart-provider";
 import { formatMoney } from "@/lib/pricing/money";
 import { cn } from "@/lib/utils";
-import type { ProductVariant, Inventory } from "@/lib/types";
+import type { ProductVariant, Inventory, PriceTier } from "@/lib/types";
+import { tierForQty, tierUnitPrice, tierRows, hasTiers } from "@/lib/catalog/pricing-tiers";
 
 type V = ProductVariant & { inventory: Inventory | null };
 
@@ -30,7 +31,7 @@ function deliveryWindow(): string {
   return `${fmt(a)} – ${fmt(b)}`;
 }
 
-export function PdpBuy({ variants, currency }: { variants: V[]; currency: string }) {
+export function PdpBuy({ variants, currency, tiers = [] }: { variants: V[]; currency: string; tiers?: PriceTier[] }) {
   const cart = useCart();
   const active = variants.filter((v) => v.is_active);
   const [selected, setSelected] = useState<V>(active[0]);
@@ -41,6 +42,9 @@ export function PdpBuy({ variants, currency }: { variants: V[]; currency: string
   const onSale = selected?.compare_at_minor != null && selected.compare_at_minor > selected.price_minor;
   const pctOff = onSale ? Math.round((1 - selected.price_minor / selected.compare_at_minor!) * 100) : 0;
   const hasColors = active.some((v) => colorOf(v));
+  const rows = tierRows(selected?.price_minor ?? 0, tiers);
+  const activeTier = tierForQty(tiers, qty);
+  const effUnit = tierUnitPrice(selected?.price_minor ?? 0, qty, tiers);
 
   async function add(e: React.MouseEvent) {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -89,10 +93,40 @@ export function PdpBuy({ variants, currency }: { variants: V[]; currency: string
         ) : <span className="text-ink-soft">Out of stock</span>}
       </p>
 
+      {hasTiers(tiers) && (
+        <div className="overflow-hidden rounded-xl border border-line">
+          <div className="flex items-center justify-between bg-paper-2 px-4 py-2.5 text-sm">
+            <span className="font-medium">Buy more, save more</span>
+            {activeTier && <span className="font-semibold text-mint">You pay {formatMoney(effUnit, currency)} each</span>}
+          </div>
+          <table className="w-full text-sm">
+            <tbody>
+              <tr className={cn("border-t border-line", !activeTier && "bg-accent/10 font-semibold")}>
+                <td className="px-4 py-2">1+</td>
+                <td className="px-4 py-2 text-right tabular-nums">{formatMoney(selected.price_minor, currency)} each</td>
+                <td className="px-4 py-2 text-right text-ink-soft">—</td>
+              </tr>
+              {rows.map((r) => {
+                const on = activeTier?.min_qty === r.min_qty;
+                return (
+                  <tr key={r.min_qty} className={cn("border-t border-line", on && "bg-accent/10 font-semibold")}>
+                    <td className="px-4 py-2">{r.min_qty}+</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{formatMoney(r.unit_minor, currency)} each</td>
+                    <td className="px-4 py-2 text-right text-accent">Save {r.pct}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <div className="flex items-center rounded-full border border-line">
           <button aria-label="Decrease quantity" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-11 w-11 place-items-center"><Minus className="h-4 w-4" /></button>
-          <span className="w-8 text-center tabular-nums">{qty}</span>
+          <input type="number" aria-label="Quantity" min={1} max={available} value={qty}
+            onChange={(e) => { const n = parseInt(e.target.value, 10); setQty(Number.isFinite(n) ? Math.min(Math.max(1, n), available) : 1); }}
+            className="w-14 bg-transparent text-center tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
           <button aria-label="Increase quantity" onClick={() => setQty((q) => Math.min(available, q + 1))} disabled={qty >= available} className="grid h-11 w-11 place-items-center disabled:opacity-40"><Plus className="h-4 w-4" /></button>
         </div>
         <Button size="lg" className="flex-1" variant="accent" onClick={add} disabled={available <= 0 || cart.adding}>

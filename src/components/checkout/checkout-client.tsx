@@ -8,17 +8,24 @@ import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/pricing/money";
 import { createCheckout } from "@/lib/checkout/actions";
 import type { AddressInput } from "@/lib/validation/checkout";
+import { DELIVERY_METHODS, DEFAULT_DELIVERY_METHOD, deliveryMethod, type DeliveryMethodId } from "@/lib/checkout/delivery";
 import type { CartLine } from "@/lib/types";
 
 interface Totals {
   subtotal_minor: number; discount_minor: number; shipping_minor: number; tax_minor: number; total_minor: number;
 }
 
+type DeliveryTotals = Record<DeliveryMethodId, { shipping_minor: number; total_minor: number }>;
+
 export function CheckoutClient({
-  lines, totals, currency, publishableKey, siteUrl,
+  lines, totals, deliveryTotals, currency, publishableKey, siteUrl,
 }: {
-  lines: CartLine[]; totals: Totals; currency: string; publishableKey: string | null; siteUrl: string;
+  lines: CartLine[]; totals: Totals; deliveryTotals: DeliveryTotals; currency: string; publishableKey: string | null; siteUrl: string;
 }) {
+  const [method, setMethod] = useState<DeliveryMethodId>(DEFAULT_DELIVERY_METHOD);
+  const needsAddress = deliveryMethod(method).needsAddress;
+  // Server-computed figures for the chosen method (re-verified in createCheckout).
+  const { shipping_minor, total_minor } = deliveryTotals[method];
   const [address, setAddress] = useState<AddressInput>({
     full_name: "", email: "", phone: "", line1: "", line2: "", city: "", postal_code: "", country: "LK", notes: "",
   });
@@ -40,7 +47,7 @@ export function CheckoutClient({
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const res = await createCheckout(address);
+    const res = await createCheckout({ ...address, delivery_method: method });
     setLoading(false);
     if (!res.ok) { setError(res.error ?? "Something went wrong"); return; }
     setOrderId(res.orderId ?? null);
@@ -53,15 +60,44 @@ export function CheckoutClient({
       <div>
         {!clientSecret ? (
           <form onSubmit={submitAddress} className="space-y-4">
-            <h2 className="font-display text-xl font-semibold">Delivery details</h2>
+            <h2 className="font-display text-xl font-semibold">Delivery method</h2>
+            <fieldset className="grid gap-3">
+              <legend className="sr-only">Delivery method</legend>
+              {DELIVERY_METHODS.map((m) => {
+                const fee = deliveryTotals[m.id].shipping_minor;
+                const active = method === m.id;
+                return (
+                  <label
+                    key={m.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-brand/30 ${active ? "border-brand bg-paper-2" : "border-line bg-paper hover:bg-paper-2"}`}
+                  >
+                    <input
+                      type="radio" name="delivery_method" value={m.id} checked={active}
+                      onChange={() => setMethod(m.id)} className="h-4 w-4 accent-brand"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{m.label}</span>
+                      <span className="block text-sm text-ink-soft">{m.description}</span>
+                    </span>
+                    <span className="shrink-0 text-sm font-medium">{fee === 0 ? "Free" : formatMoney(fee, currency)}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
+
+            <h2 className="pt-2 font-display text-xl font-semibold">{needsAddress ? "Delivery details" : "Your details"}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" value={address.full_name} onChange={(v) => set("full_name", v)} required />
               <Field label="Email" type="email" value={address.email} onChange={(v) => set("email", v)} required />
               <Field label="Phone" value={address.phone} onChange={(v) => set("phone", v)} required />
-              <Field label="City" value={address.city} onChange={(v) => set("city", v)} required />
-              <div className="sm:col-span-2"><Field label="Address" value={address.line1} onChange={(v) => set("line1", v)} required /></div>
-              <div className="sm:col-span-2"><Field label="Address line 2 (optional)" value={address.line2 ?? ""} onChange={(v) => set("line2", v)} /></div>
-              <Field label="Postal code (optional)" value={address.postal_code ?? ""} onChange={(v) => set("postal_code", v)} />
+              {needsAddress && (
+                <>
+                  <Field label="City" value={address.city} onChange={(v) => set("city", v)} required />
+                  <div className="sm:col-span-2"><Field label="Address" value={address.line1} onChange={(v) => set("line1", v)} required /></div>
+                  <div className="sm:col-span-2"><Field label="Address line 2 (optional)" value={address.line2 ?? ""} onChange={(v) => set("line2", v)} /></div>
+                  <Field label="Postal code (optional)" value={address.postal_code ?? ""} onChange={(v) => set("postal_code", v)} />
+                </>
+              )}
             </div>
             <Field label="Order notes (optional)" value={address.notes ?? ""} onChange={(v) => set("notes", v)} />
             {error && <p className="text-sm text-accent">{error}</p>}
@@ -89,11 +125,11 @@ export function CheckoutClient({
         <dl className="mt-4 space-y-1 border-t border-line pt-4 text-sm">
           <Row label="Subtotal" value={formatMoney(totals.subtotal_minor, currency)} />
           {totals.discount_minor > 0 && <Row label="Discount" value={`− ${formatMoney(totals.discount_minor, currency)}`} />}
-          <Row label="Shipping" value={totals.shipping_minor === 0 ? "Free" : formatMoney(totals.shipping_minor, currency)} />
+          <Row label={deliveryMethod(method).label} value={shipping_minor === 0 ? "Free" : formatMoney(shipping_minor, currency)} />
           {totals.tax_minor > 0 && <Row label="Tax" value={formatMoney(totals.tax_minor, currency)} />}
         </dl>
         <div className="mt-3 flex justify-between border-t border-line pt-3 font-semibold">
-          <span>Total</span><span className="font-display text-lg">{formatMoney(totals.total_minor, currency)}</span>
+          <span>Total</span><span className="font-display text-lg">{formatMoney(total_minor, currency)}</span>
         </div>
       </aside>
     </div>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePerm } from "@/lib/auth/guards";
 import { productSchema } from "@/lib/validation/product";
+import { normalizeTiers } from "@/lib/catalog/pricing-tiers";
 
 export async function saveProduct(raw: unknown): Promise<{ ok: boolean; id?: string; error?: string }> {
   const ctx = await requirePerm("products:write");
@@ -15,7 +16,7 @@ export async function saveProduct(raw: unknown): Promise<{ ok: boolean; id?: str
   const productRow = {
     name: p.name, slug: p.slug, description: p.description || null, brand: p.brand || null,
     category_id: p.category_id ?? null, age_group: p.age_group, status: p.status,
-    images: p.images, seo_title: p.seo_title || null, seo_description: p.seo_description || null, specs: p.specs,
+    images: p.images, seo_title: p.seo_title || null, seo_description: p.seo_description || null, specs: p.specs, price_tiers: normalizeTiers(p.price_tiers),
   };
 
   let productId = p.id;

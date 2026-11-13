@@ -3,6 +3,7 @@
 import { getCartLines, getPromoCode } from "@/lib/cart/actions";
 import { getActivePromotions, getStoreSettings, getProducts } from "@/lib/catalog/queries";
 import { computeTotals } from "@/lib/pricing/cart-total";
+import { DELIVERY_METHODS, type DeliveryMethodId } from "@/lib/checkout/delivery";
 import type { CartLine } from "@/lib/types";
 
 export interface CrossSellItem {
@@ -18,16 +19,21 @@ export async function getCartSummary() {
     getStoreSettings(),
     getProducts({ pageSize: 8, sort: "newest" }),
   ]);
-  const totals = computeTotals(
-    lines,
-    promotions,
-    {
-      flat_shipping_minor: settings.flat_shipping_minor,
-      free_shipping_threshold_minor: settings.free_shipping_threshold_minor,
-      tax_rate_bps: settings.tax_rate_bps,
-    },
-    code,
-  );
+  const shippingTax = {
+    flat_shipping_minor: settings.flat_shipping_minor,
+    free_shipping_threshold_minor: settings.free_shipping_threshold_minor,
+    tax_rate_bps: settings.tax_rate_bps,
+  };
+  const totals = computeTotals(lines, promotions, shippingTax, code);
+
+  // Server-computed totals per delivery method, so checkout can switch
+  // methods without doing any price math on the client.
+  const deliveryTotals = Object.fromEntries(
+    DELIVERY_METHODS.map((m) => {
+      const t = computeTotals(lines, promotions, { ...shippingTax, delivery_method: m.id }, code);
+      return [m.id, { shipping_minor: t.shipping_minor, total_minor: t.total_minor }];
+    }),
+  ) as Record<DeliveryMethodId, { shipping_minor: number; total_minor: number }>;
 
   const inCart = new Set(lines.map((l) => l.product_id));
   const crossSell: CrossSellItem[] = catalog.products
@@ -45,6 +51,7 @@ export async function getCartSummary() {
   return {
     lines,
     totals,
+    deliveryTotals,
     code,
     currency: settings.currency,
     freeShippingThreshold: settings.free_shipping_threshold_minor,
