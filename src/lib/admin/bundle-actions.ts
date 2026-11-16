@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePerm } from "@/lib/auth/guards";
 import { hasSupabase } from "@/lib/env";
+import { DEMO_MESSAGE } from "@/lib/validation/admin";
 import { bundleSchema, normalizeBundleItems } from "@/lib/validation/bundle";
 
 type Result = { ok: boolean; id?: string; error?: string };
 
-const DEMO_MESSAGE = "Demo mode — connect Supabase to save changes.";
+
 
 function revalidateBundles(slug?: string) {
   revalidatePath("/admin/bundles");

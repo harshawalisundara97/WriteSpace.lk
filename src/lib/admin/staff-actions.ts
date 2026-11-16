@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePerm, type AdminContext } from "@/lib/auth/guards";
 import { hasSupabase } from "@/lib/env";
+import { DEMO_MESSAGE } from "@/lib/validation/admin";
 import {
   checkStaffChange, normalizePermissions, staffInputSchema, staffInviteSchema, type StaffRole,
 } from "@/lib/auth/permissions";
 
 type Result = { ok: boolean; error?: string };
 type Db = ReturnType<typeof createAdminClient>;
-const DEMO_MESSAGE = "Demo mode — connect Supabase to save changes.";
+
 
 async function loadTarget(db: Db, id: string) {
   const { data } = await db.from("admin_users").select("id,role,permissions").eq("id", id).maybeSingle();

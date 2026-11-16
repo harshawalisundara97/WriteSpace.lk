@@ -109,7 +109,7 @@ banners, reviews, categories, customers, staff, settings, audit, dashboard are
 | ID | Objective | Depends on | Status |
 |---|---|---|---|
 | TASK-ADMIN-002 | Central **permission registry** + guards (last-admin / self-demotion protection); verify `inviteStaff`/`setStaff` | — | ☑ |
-| TASK-ADMIN-003 | **Zod validation** for category / promotion / banner / settings / staff actions + uniform error surfacing | 002 | ☐ |
+| TASK-ADMIN-003 | **Zod validation** for category / promotion / banner / settings / staff actions + uniform error surfacing | 002 | ☑ |
 | TASK-ADMIN-004 | **Admin action unit tests** (guards, CSV import, state transitions, bundle CRUD) | 001, 003 | ☐ |
 
 ### Phase C — Complete partial features

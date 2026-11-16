@@ -1,30 +1,16 @@
 "use server";
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePerm } from "@/lib/auth/guards";
+import { hasSupabase } from "@/lib/env";
+import { type ActionResult, DEMO_MESSAGE, bannerSchema, dbErrorMessage, idSchema, parseInput, promoSchema } from "@/lib/validation/admin";
 
-const promoSchema = z.object({
-  id: z.string().uuid().optional(),
-  name: z.string().min(2).max(120),
-  type: z.enum(["percentage", "fixed", "bxgy", "free_shipping"]),
-  value: z.number().int().min(0),
-  code: z.string().max(40).optional().or(z.literal("")),
-  min_subtotal_minor: z.number().int().min(0).default(0),
-  usage_limit: z.number().int().min(0).nullable().optional(),
-  per_customer_limit: z.number().int().min(0).nullable().optional(),
-  stackable: z.boolean().default(false),
-  priority: z.number().int().default(0),
-  is_active: z.boolean().default(true),
-  starts_at: z.string().nullable().optional(),
-  ends_at: z.string().nullable().optional(),
-});
-
-export async function savePromotion(raw: unknown): Promise<{ ok: boolean; error?: string }> {
+export async function savePromotion(raw: unknown): Promise<ActionResult> {
   const ctx = await requirePerm("promotions:write");
-  const parsed = promoSchema.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid promotion" };
+  const parsed = parseInput(promoSchema, raw, "Invalid promotion");
+  if (!parsed.ok) return parsed;
+  if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const p = parsed.data;
   const db = createAdminClient();
   const row = {
@@ -36,38 +22,32 @@ export async function savePromotion(raw: unknown): Promise<{ ok: boolean; error?
   const { error } = p.id
     ? await db.from("promotions").update(row).eq("id", p.id)
     : await db.from("promotions").insert(row);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: dbErrorMessage(error) };
   await db.from("audit_logs").insert({ actor: ctx.userId, action: p.id ? "promotion.update" : "promotion.create", entity: "promotions", entity_id: p.id ?? null, after: { name: p.name } });
   revalidatePath("/admin/promotions");
   revalidatePath("/promotions");
   return { ok: true };
 }
 
-export async function deletePromotion(id: string): Promise<{ ok: boolean }> {
+export async function deletePromotion(id: unknown): Promise<ActionResult> {
   const ctx = await requirePerm("promotions:write");
+  const parsed = parseInput(idSchema, id);
+  if (!parsed.ok) return parsed;
+  if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const db = createAdminClient();
-  await db.from("promotions").delete().eq("id", id);
-  await db.from("audit_logs").insert({ actor: ctx.userId, action: "promotion.delete", entity: "promotions", entity_id: id });
+  const { error } = await db.from("promotions").delete().eq("id", parsed.data);
+  if (error) return { ok: false, error: dbErrorMessage(error) };
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: "promotion.delete", entity: "promotions", entity_id: parsed.data });
   revalidatePath("/admin/promotions");
+  revalidatePath("/promotions");
   return { ok: true };
 }
 
-const bannerSchema = z.object({
-  id: z.string().uuid().optional(),
-  title: z.string().min(2).max(160),
-  image_url: z.string().url().nullable().optional().or(z.literal("")),
-  link_url: z.string().max(300).optional().or(z.literal("")),
-  placement: z.enum(["home_hero", "promo_strip", "category"]),
-  position: z.number().int().default(0),
-  is_active: z.boolean().default(true),
-  starts_at: z.string().nullable().optional(),
-  ends_at: z.string().nullable().optional(),
-});
-
-export async function saveBanner(raw: unknown): Promise<{ ok: boolean; error?: string }> {
+export async function saveBanner(raw: unknown): Promise<ActionResult> {
   const ctx = await requirePerm("promotions:write");
-  const parsed = bannerSchema.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid banner" };
+  const parsed = parseInput(bannerSchema, raw, "Invalid banner");
+  if (!parsed.ok) return parsed;
+  if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const b = parsed.data;
   const db = createAdminClient();
   const row = {
@@ -78,19 +58,25 @@ export async function saveBanner(raw: unknown): Promise<{ ok: boolean; error?: s
   const { error } = b.id
     ? await db.from("banners").update(row).eq("id", b.id)
     : await db.from("banners").insert(row);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: dbErrorMessage(error) };
   await db.from("audit_logs").insert({ actor: ctx.userId, action: b.id ? "banner.update" : "banner.create", entity: "banners", entity_id: b.id ?? null, after: { title: b.title } });
   revalidatePath("/admin/promotions");
+  revalidatePath("/admin/banners");
   revalidatePath("/");
   return { ok: true };
 }
 
-export async function deleteBanner(id: string): Promise<{ ok: boolean }> {
+export async function deleteBanner(id: unknown): Promise<ActionResult> {
   const ctx = await requirePerm("promotions:write");
+  const parsed = parseInput(idSchema, id);
+  if (!parsed.ok) return parsed;
+  if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const db = createAdminClient();
-  await db.from("banners").delete().eq("id", id);
-  await db.from("audit_logs").insert({ actor: ctx.userId, action: "banner.delete", entity: "banners", entity_id: id });
+  const { error } = await db.from("banners").delete().eq("id", parsed.data);
+  if (error) return { ok: false, error: dbErrorMessage(error) };
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: "banner.delete", entity: "banners", entity_id: parsed.data });
   revalidatePath("/admin/promotions");
+  revalidatePath("/admin/banners");
   revalidatePath("/");
   return { ok: true };
 }

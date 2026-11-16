@@ -68,9 +68,13 @@ export function BannersManager({ banners }: { banners: AdminBanner[] }) {
 
   function remove(id: string) {
     start(async () => {
-      await deleteBanner(id);
-      router.refresh();
-      toast("Banner deleted");
+      const res = await deleteBanner(id);
+      if (res.ok) {
+        router.refresh();
+        toast("Banner deleted");
+      } else {
+        toast(res.error ?? "Failed", "error");
+      }
     });
   }
 

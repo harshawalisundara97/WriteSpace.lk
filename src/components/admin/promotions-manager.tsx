@@ -72,7 +72,7 @@ export function PromotionsManager({ promotions, banners }: { promotions: Promoti
                   <td className="px-4 py-2">{p.is_active ? "Yes" : "No"}</td>
                   <td className="px-4 py-2 text-right">
                     <button className="mr-3 text-ink-soft hover:text-ink" onClick={() => setPromo({ id: p.id, name: p.name, type: p.type, value: p.type === "fixed" ? String(toMajor(p.value)) : String(p.value), code: p.code ?? "", min: String(toMajor(p.min_subtotal_minor)), stackable: p.stackable, priority: String(p.priority), is_active: p.is_active, starts_at: p.starts_at?.slice(0, 16) ?? "", ends_at: p.ends_at?.slice(0, 16) ?? "" })}><Pencil className="h-4 w-4" /></button>
-                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await deletePromotion(p.id); router.refresh(); toast("Promotion deleted"); })}><Trash2 className="h-4 w-4" /></button>
+                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { const r = await deletePromotion(p.id); if (r.ok) { router.refresh(); toast("Promotion deleted"); } else toast(r.error ?? "Failed", "error"); })}><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}
@@ -120,7 +120,7 @@ export function PromotionsManager({ promotions, banners }: { promotions: Promoti
                   <td className="px-4 py-2">{(b as Banner & { is_active?: boolean }).is_active === false ? "No" : "Yes"}</td>
                   <td className="px-4 py-2 text-right">
                     <button className="mr-3 text-ink-soft hover:text-ink" onClick={() => setBanner({ id: b.id, title: b.title, image_url: b.image_url ?? "", link_url: b.link_url ?? "", placement: b.placement as Banner["placement"], position: String(b.position), is_active: true })}><Pencil className="h-4 w-4" /></button>
-                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await deleteBanner(b.id); router.refresh(); toast("Banner deleted"); })}><Trash2 className="h-4 w-4" /></button>
+                    <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { const r = await deleteBanner(b.id); if (r.ok) { router.refresh(); toast("Banner deleted"); } else toast(r.error ?? "Failed", "error"); })}><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}
