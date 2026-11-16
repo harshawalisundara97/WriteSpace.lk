@@ -1,7 +1,7 @@
 # WriteSpace.lk — Progress
 
 > Rolling status log. Update after each development session.
-> **Last updated:** 2026-11-13 · **Branch:** `main` · **Last commit:** `2d8518d` (feat(customer): add About page + footer link — TASK-002)
+> **Last updated:** 2026-11-16 · **Branch:** `main` · **Last commit:** `842d5f0` (feat: implement saved delivery address book for customers — TASK-010)
 > "Verified" = built + browser-checked this session. "Committed" = in Git history but not re-verified here.
 > See [docs/PROJECT_MAP.md](docs/PROJECT_MAP.md) (structure) and [ARCHITECTURE.md](ARCHITECTURE.md) (design).
 
@@ -34,7 +34,9 @@ Verified this session (built, typecheck + `next build` pass, browser-checked):
 - **Bundles & school packs** (`/bundles` + `/bundles/[slug]`) — curated/grade packs of existing products with an optional bundle price + “Add all to cart” (`addManyToCart`); `bundles`/`bundle_items` schema in step across migrations/seed/setup, header + footer “School packs” links, sitemap entries (TASK-007, _commit pending_)
 - **Bulk ordering** (tiered pricing + bulk qty UI) — per-product `price_tiers` jsonb (`{min_qty, discount_bps}`, % off each unit) via shared `lib/catalog/pricing-tiers.ts`; **enforced server-side in `getCartLines`** so cart/totals/checkout charge the tiered price; PDP “Buy more, save more” table + live per-unit price + typeable qty; admin “Bulk pricing” form section; schema in step across migrations/seed/setup (TASK-008, _commit pending_)
 - **Delivery method at checkout** (Standard / Express / Store pickup) — methods + fee rules in shared `lib/checkout/delivery.ts` (express = flat + LKR 400, never waived; pickup free, no address); `computeTotals` prices the chosen method, `createCheckout` re-validates it and stores `orders.delivery_method` (migration `0010` + `setup.sql`); order detail/invoice name the method. Typecheck, unit tests and build pass; **checkout selector UI not browser-checked** (cart is disabled in demo mode) (TASK-009, _commit pending_)
-- **Saved delivery address book** (`/account/addresses`) — owner-scoped `addresses` table (RLS like wishlists) with a book of add/edit/delete + default addresses (`lib/account/addresses.ts`, `addressBookSchema`); account page + nav link; checkout prefills email + the default saved address and offers a saved-address picker ("Use a new address"); `demoAddresses` fixtures; schema in `migrations/0011` + `setup.sql` (`seed.sql` needs none — no customer rows). Typecheck, 31 unit tests and build pass; address book browser-checked in demo mode (list/add/no-op); **checkout picker not browser-checked** (cart disabled in demo mode) (TASK-010, _commit pending_)
+- **Saved delivery address book** (`/account/addresses`) — owner-scoped `addresses` table (RLS like wishlists) with a book of add/edit/delete + default addresses (`lib/account/addresses.ts`, `addressBookSchema`); account page + nav link; checkout prefills email + the default saved address and offers a saved-address picker ("Use a new address"); `demoAddresses` fixtures; schema in `migrations/0011` + `setup.sql` (`seed.sql` needs none — no customer rows). Typecheck, 31 unit tests and build pass; address book browser-checked in demo mode (list/add/no-op); **checkout picker not browser-checked** (cart disabled in demo mode) (TASK-010, `842d5f0`)
+- **Admin bundles / school packs CRUD** (`/admin/bundles`) — list, create/edit, delete, publish ⇄ draft, item builder (product + variant + qty with live totals), optional curated price; `products:write`-gated actions + nav, every write audited, storefront `/bundles` revalidated; `bundleSchema` + item normalization with 9 unit tests. Typecheck, 40 tests and build pass; browser-checked in demo mode (list, form, item builder, demo-mode toast) (TASK-ADMIN-001, _commit pending_)
+- **Admin permission registry + staff guards** — central `lib/auth/permissions.ts` (typed `Permission`, labels, zod staff schemas, `checkStaffChange`); `requirePerm`/nav typed to the registry; staff actions validated and guarded against self-demotion/removal, last-admin loss, non-admins managing admins, and permission escalation; `inviteStaff` no longer upserts over existing access; staff UI surfaces errors. Typecheck, 51 tests and build pass; not run against live Supabase (TASK-ADMIN-002, _commit pending_)
 
 Committed earlier (not re-verified this session): checkout/payments, accounts,
 admin dashboard, demo mode, PDP/reviews/quick-view/search, faceted filters,
@@ -43,8 +45,10 @@ engagement, `supabase/setup.sql`, account dashboard/profile/forgot-password.
 
 ## Current work
 
-- TASK-010 (saved delivery address book) — **done this session; commit pending.** The checkout saved-address picker + a real save/default run still need a browser check once Supabase is connected (cart disabled in demo mode). TASK-003 to TASK-010 are all still uncommitted in the working tree. TASK-010 was the last item on the customer-facing roadmap — all ten tasks are now ☑ in the plan.
-  See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md) for the full customer-facing roadmap.
+- **Admin Dashboard phase** started. TASK-ADMIN-001 (bundles CRUD) and TASK-ADMIN-002 (permission registry + staff guards) — **done; commits pending.** Next up: TASK-ADMIN-003 (zod validation for category/promotion/banner/settings actions).
+  See [docs/ADMIN_DASHBOARD_IMPLEMENTATION_PLAN.md](docs/ADMIN_DASHBOARD_IMPLEMENTATION_PLAN.md) for the admin roadmap and per-task records.
+- Customer-facing roadmap (TASK-001–010) is complete and committed (`842d5f0`); the checkout saved-address picker still needs a browser check once Supabase is connected.
+  See [docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md](docs/CUSTOMER_ECOMMERCE_IMPLEMENTATION_PLAN.md).
 
 ## Pending tasks
 

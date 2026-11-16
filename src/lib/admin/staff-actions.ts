@@ -2,45 +2,80 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { requirePerm, type AdminContext } from "@/lib/auth/guards";
+import { hasSupabase } from "@/lib/env";
+import {
+  checkStaffChange, normalizePermissions, staffInputSchema, staffInviteSchema, type StaffRole,
+} from "@/lib/auth/permissions";
 
-export const ALL_PERMISSIONS = [
-  "orders:write", "refunds:create", "products:write", "inventory:write",
-  "promotions:write", "customers:write", "settings:write", "staff:write",
-] as const;
+type Result = { ok: boolean; error?: string };
+type Db = ReturnType<typeof createAdminClient>;
+const DEMO_MESSAGE = "Demo mode — connect Supabase to save changes.";
+
+async function loadTarget(db: Db, id: string) {
+  const { data } = await db.from("admin_users").select("id,role,permissions").eq("id", id).maybeSingle();
+  return data ? { id: data.id as string, role: data.role as StaffRole, permissions: (data.permissions as string[]) ?? [] } : null;
+}
+
+async function countAdmins(db: Db): Promise<number> {
+  const { count } = await db.from("admin_users").select("id", { count: "exact", head: true }).eq("role", "admin");
+  return count ?? 0;
+}
+
+const actorOf = (ctx: AdminContext) => ({ id: ctx.userId, role: ctx.role as StaffRole, permissions: ctx.permissions });
 
 // Grant admin/staff access to an EXISTING account (they must have registered).
-export async function inviteStaff(email: string, role: "admin" | "staff", permissions: string[]): Promise<{ ok: boolean; error?: string }> {
+// By design no invite email is sent and no auth user is created.
+export async function inviteStaff(email: string, role: StaffRole, permissions: string[]): Promise<Result> {
   const ctx = await requirePerm("staff:write");
+  const parsed = staffInviteSchema.safeParse({ email, role, permissions });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const db = createAdminClient();
-  const { data: customer } = await db.from("customers").select("id").eq("email", email.trim().toLowerCase()).maybeSingle();
+  const { data: customer } = await db.from("customers").select("id").eq("email", parsed.data.email).maybeSingle();
   if (!customer) return { ok: false, error: "No account with that email. Ask them to register first." };
-  const { error } = await db.from("admin_users").upsert(
-    { id: customer.id, role, permissions: role === "admin" ? [] : permissions },
-    { onConflict: "id" },
-  );
+  if (await loadTarget(db, customer.id)) return { ok: false, error: "That account already has access — edit it in the list below." };
+  const next = { role: parsed.data.role, permissions: normalizePermissions(parsed.data.role, parsed.data.permissions) };
+  const denied = checkStaffChange({ actor: actorOf(ctx), target: null, next, adminCount: await countAdmins(db) });
+  if (denied) return { ok: false, error: denied };
+  const { error } = await db.from("admin_users").insert({ id: customer.id, ...next });
   if (error) return { ok: false, error: error.message };
-  await db.from("audit_logs").insert({ actor: ctx.userId, action: "staff.invite", entity: "admin_users", entity_id: customer.id, after: { role, permissions } });
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: "staff.invite", entity: "admin_users", entity_id: customer.id, after: next });
   revalidatePath("/admin/staff");
   return { ok: true };
 }
 
-export async function setStaff(userId: string, role: "admin" | "staff", permissions: string[]): Promise<{ ok: boolean; error?: string }> {
+export async function setStaff(userId: string, role: StaffRole, permissions: string[]): Promise<Result> {
   const ctx = await requirePerm("staff:write");
+  const parsed = staffInputSchema.safeParse({ role, permissions });
+  if (!parsed.success || typeof userId !== "string" || !userId) return { ok: false, error: "Invalid input" };
+  if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const db = createAdminClient();
-  const { error } = await db.from("admin_users").update({ role, permissions: role === "admin" ? [] : permissions }).eq("id", userId);
+  const target = await loadTarget(db, userId);
+  if (!target) return { ok: false, error: "Staff member not found." };
+  const next = { role: parsed.data.role, permissions: normalizePermissions(parsed.data.role, parsed.data.permissions) };
+  const denied = checkStaffChange({ actor: actorOf(ctx), target, next, adminCount: await countAdmins(db) });
+  if (denied) return { ok: false, error: denied };
+  const { error } = await db.from("admin_users").update(next).eq("id", userId);
   if (error) return { ok: false, error: error.message };
-  await db.from("audit_logs").insert({ actor: ctx.userId, action: "staff.update", entity: "admin_users", entity_id: userId, after: { role, permissions } });
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: "staff.update", entity: "admin_users", entity_id: userId, before: { role: target.role, permissions: target.permissions }, after: next });
   revalidatePath("/admin/staff");
   return { ok: true };
 }
 
-export async function removeStaff(userId: string): Promise<{ ok: boolean; error?: string }> {
+export async function removeStaff(userId: string): Promise<Result> {
   const ctx = await requirePerm("staff:write");
+  if (typeof userId !== "string" || !userId) return { ok: false, error: "Invalid input" };
   if (userId === ctx.userId) return { ok: false, error: "You can't remove your own access." };
+  if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const db = createAdminClient();
-  await db.from("admin_users").delete().eq("id", userId);
-  await db.from("audit_logs").insert({ actor: ctx.userId, action: "staff.remove", entity: "admin_users", entity_id: userId });
+  const target = await loadTarget(db, userId);
+  if (!target) return { ok: false, error: "Staff member not found." };
+  const denied = checkStaffChange({ actor: actorOf(ctx), target, next: null, adminCount: await countAdmins(db) });
+  if (denied) return { ok: false, error: denied };
+  const { error } = await db.from("admin_users").delete().eq("id", userId);
+  if (error) return { ok: false, error: error.message };
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: "staff.remove", entity: "admin_users", entity_id: userId, before: { role: target.role, permissions: target.permissions } });
   revalidatePath("/admin/staff");
   return { ok: true };
 }

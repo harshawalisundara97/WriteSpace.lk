@@ -111,6 +111,11 @@ export function demoBundleBySlug(slug: string): BundleWithItems | null {
   return def ? buildBundle(def) : null;
 }
 
+export function demoBundleById(id: string): BundleWithItems | null {
+  const def = BUNDLE_DEFS.find((d) => d.bundle.id === id);
+  return def ? buildBundle(def) : null;
+}
+
 export const demoBanners: Banner[] = [
   { id: "b1", title: "Back to School — up to 30% off", image_url: null, link_url: "/c/kids-corner", placement: "home_hero", position: 1 },
   { id: "b2", title: "New journals just landed", image_url: null, link_url: "/products/a5-dotted-notebook", placement: "home_hero", position: 2 },

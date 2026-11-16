@@ -102,13 +102,13 @@ banners, reviews, categories, customers, staff, settings, audit, dashboard are
 
 | ID | Objective | Depends on | Status |
 |---|---|---|---|
-| TASK-ADMIN-001 | **Bundle / School Pack admin CRUD** — list, create, edit, delete, publish/draft, item builder (product+variant+qty), curated price | — | ☐ |
+| TASK-ADMIN-001 | **Bundle / School Pack admin CRUD** — list, create, edit, delete, publish/draft, item builder (product+variant+qty), curated price | — | ☑ |
 
 ### Phase B — Harden existing admin
 
 | ID | Objective | Depends on | Status |
 |---|---|---|---|
-| TASK-ADMIN-002 | Central **permission registry** + guards (last-admin / self-demotion protection); verify `inviteStaff`/`setStaff` | — | ☐ |
+| TASK-ADMIN-002 | Central **permission registry** + guards (last-admin / self-demotion protection); verify `inviteStaff`/`setStaff` | — | ☑ |
 | TASK-ADMIN-003 | **Zod validation** for category / promotion / banner / settings / staff actions + uniform error surfacing | 002 | ☐ |
 | TASK-ADMIN-004 | **Admin action unit tests** (guards, CSV import, state transitions, bundle CRUD) | 001, 003 | ☐ |
 
@@ -194,6 +194,88 @@ files added/modified; acceptance-criteria results; tests performed + results;
 remaining limitations; commit reference (when committed).
 
 ---
+
+## Task records
+
+### TASK-ADMIN-001 — Bundle / School Pack admin CRUD ☑ (2026-11-16)
+
+**Implemented**
+- `/admin/bundles`: list (name, slug, grade label, item count, price + savings,
+  status, featured), create/edit form, delete, publish ⇄ draft toggle.
+- Item builder: add/remove rows, product picker, variant picker (blank = the
+  product's first variant), quantity; live "items total / bundle price / save"
+  preview; curated price entered in LKR and stored as integer minor units.
+- "Bundles" nav item (`perm: "products:write"`, between Products and Reviews).
+
+**Files added**
+- `src/lib/validation/bundle.ts` — `bundleSchema`, `bundleItemSchema`,
+  `normalizeBundleItems` (dedupes by product — `bundle_items` PK is
+  `(bundle_id, product_id)` — nulls a missing variant, assigns positions).
+- `src/lib/admin/bundle-actions.ts` — `saveBundle`, `setBundleStatus`,
+  `deleteBundle`. Each: `requirePerm("products:write")` → demo guard →
+  write → `audit_logs` row (`bundle.create|update|status|delete`) →
+  `revalidatePath` for `/admin/bundles`, `/bundles`, `/bundles/[slug]`.
+  `saveBundle` replaces the item set (delete + re-insert) per save.
+- `src/lib/admin/bundle-queries.ts` — `getAdminBundles` / `getAdminBundle`
+  (service-role client, all statuses so drafts are editable; demo fixtures
+  otherwise).
+- `src/app/admin/bundles/page.tsx`, `src/components/admin/bundles-manager.tsx`.
+- `tests/unit/bundle.test.ts` (9 tests: schema defaults/rejections, item
+  normalization).
+
+**Files modified**
+- `src/lib/catalog/bundles.ts` — exported `BUNDLE_SELECT`, `RawBundleRow`,
+  `shapeBundle` for reuse by the admin query (storefront behaviour unchanged).
+- `src/lib/demo/data.ts` — `demoBundleById()`.
+- `src/components/admin/admin-nav.tsx` — Bundles nav item.
+
+**Acceptance criteria** — all met: CRUD + status toggle + item builder +
+optional curated price; `products:write` gated (action + nav); every write
+audited; storefront paths revalidated; demo mode lists the 3 fixtures and
+writes return the standard demo message. No schema change was needed (no new
+migration).
+
+**Tests performed**
+- `npm run typecheck` ✅ · `npm test` ✅ 40/40 (4 files; 9 new) ·
+  `npm run build` ✅ (`/admin/bundles` emitted as a dynamic route).
+- Browser (demo mode): `/admin/bundles` lists the 3 demo packs with prices and
+  savings; "New bundle" opens the form; "Add product" adds a row pre-selecting
+  the first unused product with live totals; saving shows the demo-mode toast.
+
+**Remaining limitations**
+- No write path has run against a real Supabase backend yet (TASK-ADMIN-008).
+- Product picker is a plain `<select>` (search picker is TASK-ADMIN-007).
+- `saveBundle` is not transactional (bundle row, items delete, items insert are
+  separate requests) — acceptable for a single-admin tool; revisit if needed.
+- Commit: _pending_.
+
+### TASK-ADMIN-002 — Permission registry + staff guards ☑ (2026-11-16)
+
+**Implemented**
+- `src/lib/auth/permissions.ts` (pure, client-safe): `PERMISSIONS`, `Permission`
+  type, `PERMISSION_LABELS`, `isPermission`, `normalizePermissions`,
+  `hasPermission`, zod `staffInputSchema`/`staffInviteSchema`, and
+  `checkStaffChange` — blocks self-removal / self role-or-perm change, removing
+  or demoting the last admin, non-admins touching admins or granting admin, and
+  staff granting permissions they don't hold (no escalation).
+- `guards.ts`: `can`/`requirePerm` typed to `Permission` (typo = compile error).
+- `staff-actions.ts`: zod-validated inputs, unknown perms dropped, demo guard,
+  `checkStaffChange` on invite/set/remove, `before`+`after` audit rows, delete
+  errors surfaced. Removed the invalid non-function `ALL_PERMISSIONS` export
+  from the `"use server"` file. `inviteStaff` verified: grants access to an
+  existing registered account only (no email, no auth row) and now refuses to
+  overwrite an existing admin/staff row (previously an upsert could silently
+  demote an admin).
+- `staff-manager.tsx`: uses registry + labels; own role select disabled;
+  `setStaff`/`removeStaff` errors toasted (role select reverts on failure).
+- `admin-nav.tsx`: `perm` typed `Permission`.
+
+**Tests:** `npm run typecheck` ✅ · `npm test` ✅ 51/51 (11 new in
+`tests/unit/permissions.test.ts`) · `npm run build` ✅.
+
+**Remaining limitations:** last-admin check is read-then-write (not atomic;
+a DB trigger would close the race); RLS policies unchanged; not run against a
+live Supabase (TASK-ADMIN-008). Commit: _pending_.
 
 ## Workflow rules (carried over)
 

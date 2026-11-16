@@ -6,7 +6,7 @@ import { demoBundles, demoBundleBySlug } from "@/lib/demo/data";
 
 // Nested select: bundle + its items joined to the full product (+ variants +
 // inventory) and the specific chosen variant.
-const BUNDLE_SELECT =
+export const BUNDLE_SELECT =
   "id,name,slug,description,age_group,grade_label,image_url,bundle_price_minor,is_featured,position,status,created_at," +
   "bundle_items(quantity,position," +
   "product:products(id,category_id,name,slug,description,brand,age_group,status,images,seo_title,seo_description,specs,created_at," +
@@ -14,11 +14,11 @@ const BUNDLE_SELECT =
   "inventory(variant_id,on_hand,reserved,low_stock_threshold)))," +
   "variant:product_variants(id,product_id,sku,name,options,price_minor,compare_at_minor,currency,position,is_active))";
 
-type RawBundleRow = Omit<BundleWithItems, "items"> & {
+export type RawBundleRow = Omit<BundleWithItems, "items"> & {
   bundle_items: { quantity: number; position: number; product: unknown; variant: unknown }[];
 };
 
-function shapeBundle(row: RawBundleRow): BundleWithItems {
+export function shapeBundle(row: RawBundleRow): BundleWithItems {
   const items = (row.bundle_items ?? [])
     .filter((bi) => bi.product)
     .sort((a, b) => a.position - b.position)

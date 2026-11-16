@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AppRole } from "@/lib/types";
 import { hasSupabase } from "@/lib/env";
+import { hasPermission, type Permission } from "@/lib/auth/permissions";
 
 export interface AdminContext {
   userId: string;
@@ -30,12 +31,12 @@ export async function requireAdmin(): Promise<AdminContext> {
   return ctx;
 }
 
-export function can(ctx: AdminContext, permission: string): boolean {
-  return ctx.role === "admin" || ctx.permissions.includes(permission);
+export function can(ctx: AdminContext, permission: Permission): boolean {
+  return hasPermission(ctx.role === "admin" ? "admin" : "staff", ctx.permissions, permission);
 }
 
 // Throw-style check for server actions.
-export async function requirePerm(permission: string): Promise<AdminContext> {
+export async function requirePerm(permission: Permission): Promise<AdminContext> {
   const ctx = await requireAdmin();
   if (!can(ctx, permission)) throw new Error("Forbidden: missing permission " + permission);
   return ctx;

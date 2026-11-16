@@ -5,14 +5,16 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, ShoppingCart, Package, Boxes, FolderTree, Tag, Images, Star, Users, RotateCcw, ScrollText, Settings, Shield, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/types";
+import type { Permission } from "@/lib/auth/permissions";
 
-interface NavItem { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean }
+interface NavItem { href: string; label: string; icon: LucideIcon; perm?: Permission; adminOnly?: boolean }
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart, perm: "orders:write" },
   { href: "/admin/refunds", label: "Refunds", icon: RotateCcw, perm: "refunds:create" },
   { href: "/admin/products", label: "Products", icon: Package, perm: "products:write" },
+  { href: "/admin/bundles", label: "Bundles", icon: Boxes, perm: "products:write" },
   { href: "/admin/reviews", label: "Reviews", icon: Star, perm: "products:write" },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes, perm: "inventory:write" },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, perm: "products:write" },
@@ -29,7 +31,7 @@ export function visibleNav(role: AppRole, permissions: string[]): NavItem[] {
   return NAV_ITEMS.filter((i) => {
     if (i.adminOnly) return false;
     if (!i.perm) return true;
-    return permissions.includes(i.perm);
+    return (permissions as string[]).includes(i.perm);
   });
 }
 

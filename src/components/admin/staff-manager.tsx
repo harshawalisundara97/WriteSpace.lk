@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { inviteStaff, setStaff, removeStaff, ALL_PERMISSIONS } from "@/lib/admin/staff-actions";
+import { inviteStaff, setStaff, removeStaff } from "@/lib/admin/staff-actions";
+import { PERMISSIONS, PERMISSION_LABELS } from "@/lib/auth/permissions";
 import { useToast } from "@/components/admin/toast";
 
 type Row = { id: string; role: "admin" | "staff"; permissions: string[]; email: string; self: boolean };
@@ -33,9 +34,9 @@ export function StaffManager({ staff }: { staff: Row[] }) {
         </div>
         {role === "staff" && (
           <div className="mt-3 flex flex-wrap gap-3">
-            {ALL_PERMISSIONS.map((p) => (
-              <label key={p} className="flex items-center gap-2 text-sm text-ink-soft">
-                <input type="checkbox" checked={perms.includes(p)} onChange={() => togglePerm(p)} className="accent-brand" /> {p}
+            {PERMISSIONS.map((p) => (
+              <label key={p} title={p} className="flex items-center gap-2 text-sm text-ink-soft">
+                <input type="checkbox" checked={perms.includes(p)} onChange={() => togglePerm(p)} className="accent-brand" /> {PERMISSION_LABELS[p]}
               </label>
             ))}
           </div>
@@ -56,13 +57,13 @@ export function StaffManager({ staff }: { staff: Row[] }) {
               <tr key={s.id} className="border-t border-line align-top">
                 <td className="px-4 py-3">{s.email}{s.self && <span className="ml-2 text-xs text-ink-soft">(you)</span>}</td>
                 <td className="px-4 py-3">
-                  <select defaultValue={s.role} disabled={pending} onChange={(e) => start(async () => { await setStaff(s.id, e.target.value as "admin" | "staff", s.permissions); router.refresh(); toast("Role updated"); })} className="rounded-lg border border-line bg-paper px-2 py-1">
+                  <select defaultValue={s.role} disabled={pending || s.self} title={s.self ? "You can't change your own role" : undefined} onChange={(e) => { const el = e.currentTarget; const prev = s.role; start(async () => { const res = await setStaff(s.id, el.value as "admin" | "staff", s.permissions); if (res.ok) { router.refresh(); toast("Role updated"); } else { el.value = prev; toast(res.error ?? "Failed", "error"); } }); }} className="rounded-lg border border-line bg-paper px-2 py-1">
                     <option value="staff">Staff</option><option value="admin">Admin</option>
                   </select>
                 </td>
                 <td className="px-4 py-3 text-xs text-ink-soft">{s.role === "admin" ? "All" : s.permissions.join(", ") || "—"}</td>
                 <td className="px-4 py-3 text-right">
-                  {!s.self && <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { await removeStaff(s.id); router.refresh(); toast("Access removed"); })}><Trash2 className="h-4 w-4" /></button>}
+                  {!s.self && <button className="text-ink-soft hover:text-accent" onClick={() => start(async () => { const res = await removeStaff(s.id); if (res.ok) { router.refresh(); toast("Access removed"); } else toast(res.error ?? "Failed", "error"); })}><Trash2 className="h-4 w-4" /></button>}
                 </td>
               </tr>
             ))}
