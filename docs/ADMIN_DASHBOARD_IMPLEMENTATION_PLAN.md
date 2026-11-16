@@ -342,3 +342,31 @@ disabled method server-side; fees remain server-computed.
 keep their snapshotted `shipping_minor`; migration 0012 must be applied before
 saving settings against a live DB. Browser check not run.
 
+
+### TASK-ADMIN-008 — Connected-backend smoke ◐ mostly done (2026-11-16)
+
+**Setup:** local Supabase via Docker — `npx supabase@2.20.5 start -x studio,logflare,vector,imgproxy,edge-runtime --ignore-health-check`
+(studio/storage health checks are flaky on first boot). Migrations 0001–0013 + seed apply cleanly.
+`.env.local` (local keys) and `.env.test.local` (test logins: `admin`, `staffprod` = `products:write`,
+`staffnone` = no perms, all `@writespace.test`) — both git-ignored.
+
+**Verified (live local backend)**
+- Logged-out `/admin` redirects; admin login loads live data.
+- Bundle status change and store-settings save persist and write `audit_logs` rows with the correct actor.
+- RLS via direct REST: anon + `staffnone` cannot update products (0 rows); `admin` + `staffprod` can.
+- Server action guard: `staffnone` clicking "Move to draft" is refused — DB unchanged.
+
+**Fixed (finding)**
+- Staff could read the whole audit trail: RLS used `is_admin()` (true for any staff row) and `/admin/audit`
+  only called `requireAdmin()` (nav hid it, URL didn't). Added `0013_audit_admin_only.sql`
+  (`is_admin_role()` + policy), mirrored in `setup.sql`; added `requireAdminRole()` guard used by the page.
+  Re-verified: only `admin` sees audit rows via REST; staff hitting `/admin/audit` land on `/admin`.
+  `npm run typecheck` ✅ · `npm test` ✅ 114/114.
+
+**Open findings**
+- A `requirePerm` refusal throws, so staff get the full "Something went wrong" error page instead of a
+  toast. Actions should return `{ ok:false, error }` on missing permission.
+- Pages for gated sections (e.g. `/admin/bundles`) are viewable (read-only) by staff without the perm.
+
+**Not covered:** product create/edit form, staff invite/role change, sales-report generation in the UI.
+Commit: _pending_.

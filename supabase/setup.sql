@@ -369,6 +369,10 @@ create or replace function is_admin() returns boolean as $$
   select exists (select 1 from admin_users where id = auth.uid());
 $$ language sql stable security definer set search_path = public;
 
+create or replace function is_admin_role() returns boolean as $$
+  select exists (select 1 from admin_users where id = auth.uid() and role = 'admin');
+$$ language sql stable security definer set search_path = public;
+
 create or replace function has_perm(perm text) returns boolean as $$
   select exists (
     select 1 from admin_users
@@ -464,7 +468,7 @@ create policy admin_read_admins on admin_users for select using (is_admin());
 create policy admin_manage_admins on admin_users for all using (has_perm('staff:write')) with check (has_perm('staff:write'));
 
 -- audit log: admins read; inserts via server (service role)
-create policy admin_read_audit on audit_logs for select using (is_admin());
+create policy admin_read_audit on audit_logs for select using (is_admin_role());
 
 -- settings: admins update
 create policy admin_update_settings on store_settings for update using (has_perm('settings:write')) with check (has_perm('settings:write'));
