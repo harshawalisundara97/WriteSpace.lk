@@ -19,9 +19,17 @@ export async function updateSettings(raw: unknown): Promise<ActionResult> {
     support_email: s.support_email || null,
     support_phone: s.support_phone || null, whatsapp: s.whatsapp || null, address: s.address || null,
     instagram_url: s.instagram_url || null, facebook_url: s.facebook_url || null,
+    express_surcharge_minor: s.express_surcharge_minor,
+    express_enabled: s.express_enabled, pickup_enabled: s.pickup_enabled,
+    standard_description: s.standard_description || null,
+    express_description: s.express_description || null,
+    pickup_description: s.pickup_description || null,
   }).eq("id", 1);
   if (error) return { ok: false, error: dbErrorMessage(error) };
-  await db.from("audit_logs").insert({ actor: ctx.userId, action: "settings.update", entity: "store_settings", entity_id: "1", after: { store_name: s.store_name } });
+  await db.from("audit_logs").insert({ actor: ctx.userId, action: "settings.update", entity: "store_settings", entity_id: "1", after: {
+    store_name: s.store_name, flat_shipping_minor: s.flat_shipping_minor,
+    express_surcharge_minor: s.express_surcharge_minor, express_enabled: s.express_enabled, pickup_enabled: s.pickup_enabled,
+  } });
   revalidatePath("/", "layout");
   return { ok: true };
 }

@@ -31,6 +31,7 @@ export default async function CheckoutPage() {
         lines={summary.lines}
         totals={summary.totals}
         deliveryTotals={summary.deliveryTotals}
+        deliveryMethods={summary.deliveryMethods}
         currency={summary.currency}
         publishableKey={pk}
         siteUrl={siteUrl}

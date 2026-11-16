@@ -2,11 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, X, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge, EmptyState } from "@/components/admin/ui";
 import { useToast } from "@/components/admin/toast";
 import { saveBundle, deleteBundle, setBundleStatus } from "@/lib/admin/bundle-actions";
+import { draftPricing, parsePriceMinor } from "@/lib/admin/bundle-builder";
+import { ProductSearchPicker } from "@/components/admin/product-search-picker";
 import type { AgeGroup, BundleWithItems, ProductStatus, ProductWithVariants } from "@/lib/types";
 
 type ItemDraft = { product_id: string; variant_id: string; quantity: string };
@@ -63,7 +65,8 @@ export function BundlesManager({ bundles, products }: { bundles: BundleWithItems
     const items = draft.items
       .filter((i) => i.product_id)
       .map((i, idx) => ({ product_id: i.product_id, variant_id: i.variant_id || null, quantity: Number(i.quantity || 1), position: idx }));
-    const priceTrim = draft.price.trim();
+    const parsedPrice = parsePriceMinor(draft.price);
+    if (Number.isNaN(parsedPrice)) { toast("Curated price must be a non-negative number", "error"); return; }
     start(async () => {
       const res = await saveBundle({
         id: draft.id,
@@ -73,7 +76,7 @@ export function BundlesManager({ bundles, products }: { bundles: BundleWithItems
         age_group: draft.age_group,
         grade_label: draft.grade_label,
         image_url: draft.image_url,
-        bundle_price_minor: priceTrim ? Math.round(Number(priceTrim) * 100) : null,
+        bundle_price_minor: parsedPrice,
         is_featured: draft.is_featured,
         position: Number(draft.position || 0),
         status: draft.status,
@@ -114,10 +117,7 @@ export function BundlesManager({ bundles, products }: { bundles: BundleWithItems
     setDraft({ ...draft, items: draft.items.filter((_, i) => i !== idx) });
   }
 
-  const draftItemsTotal = draft
-    ? draft.items.reduce((s, i) => s + variantPrice(productById(i.product_id), i.variant_id) * Number(i.quantity || 0), 0)
-    : 0;
-  const draftPriceMinor = draft && draft.price.trim() ? Math.round(Number(draft.price) * 100) : draftItemsTotal;
+  const pricing = draft ? draftPricing(draft.items, draft.price, productById) : null;
 
   return (
     <div className="space-y-6">
@@ -195,14 +195,13 @@ export function BundlesManager({ bundles, products }: { bundles: BundleWithItems
             <div className="space-y-2">
               {draft.items.map((it, idx) => {
                 const p = productById(it.product_id);
+                const line = pricing?.lines[idx];
+                const others = new Set(draft.items.map((x) => x.product_id).filter((id) => id && id !== it.product_id));
                 return (
-                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto_auto] items-end gap-2">
-                    <label className="block"><span className="mb-1 block text-xs text-ink-soft">Product</span>
-                      <select value={it.product_id} onChange={(e) => setItem(idx, { product_id: e.target.value, variant_id: "" })} className="h-10 w-full rounded-xl border border-line bg-paper px-2 text-sm">
-                        <option value="">— Select —</option>
-                        {products.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
-                      </select>
-                    </label>
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-end gap-2">
+                    <div className="block"><span className="mb-1 block text-xs text-ink-soft">Product</span>
+                      <ProductSearchPicker products={products} value={it.product_id} excludeIds={others} onChange={(id) => setItem(idx, { product_id: id, variant_id: "" })} />
+                    </div>
                     <label className="block"><span className="mb-1 block text-xs text-ink-soft">Variant</span>
                       <select value={it.variant_id} onChange={(e) => setItem(idx, { variant_id: e.target.value })} className="h-10 w-full rounded-xl border border-line bg-paper px-2 text-sm" disabled={!p}>
                         <option value="">First / default</option>
@@ -212,15 +211,35 @@ export function BundlesManager({ bundles, products }: { bundles: BundleWithItems
                     <label className="block w-20"><span className="mb-1 block text-xs text-ink-soft">Qty</span>
                       <input type="number" min={1} value={it.quantity} onChange={(e) => setItem(idx, { quantity: e.target.value })} className="h-10 w-full rounded-xl border border-line bg-paper px-2 text-sm" />
                     </label>
+                    <div className="w-32 pb-2 text-right text-sm tabular-nums" title={line ? `${fmt(line.unitMinor)} × ${line.quantity}` : undefined}>
+                      {line && p ? fmt(line.lineMinor, pricing?.currency) : <span className="text-ink-soft">—</span>}
+                    </div>
                     <button className="mb-1 p-2 text-ink-soft hover:text-accent" title="Remove" onClick={() => removeItem(idx)}><X className="h-4 w-4" /></button>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-3 text-sm text-ink-soft">
-              Items total: <span className="font-medium text-ink">{fmt(draftItemsTotal)}</span> · Bundle price: <span className="font-medium text-ink">{fmt(draftPriceMinor)}</span>
-              {draftPriceMinor < draftItemsTotal && <span className="ml-1 text-mint">save {fmt(draftItemsTotal - draftPriceMinor)}</span>}
-            </div>
+            {pricing && (
+              <div className="mt-4 rounded-xl bg-paper-2 px-4 py-3 text-sm" aria-live="polite">
+                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-soft">Storefront preview</div>
+                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                  <span className="font-display text-lg font-semibold">{fmt(pricing.priceMinor, pricing.currency)}</span>
+                  {pricing.savingsMinor > 0 && (
+                    <>
+                      <span className="text-ink-soft line-through">{fmt(pricing.itemsTotalMinor, pricing.currency)}</span>
+                      <span className="font-medium text-mint">Save {fmt(pricing.savingsMinor, pricing.currency)} ({pricing.savingsPct}%)</span>
+                    </>
+                  )}
+                  <span className="text-ink-soft">{pricing.curated ? "curated price" : "sum of items"} · {pricing.lines.reduce((s, l) => s + l.quantity, 0)} units</span>
+                </div>
+                {pricing.priceAboveItems && (
+                  <p className="mt-2 flex items-center gap-1 text-accent"><AlertTriangle className="h-4 w-4" /> Curated price is above the items total ({fmt(pricing.itemsTotalMinor, pricing.currency)}), so customers pay more than buying separately.</p>
+                )}
+                {pricing.invalidPrice && (
+                  <p className="mt-2 flex items-center gap-1 text-accent"><AlertTriangle className="h-4 w-4" /> Curated price must be a non-negative number.</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-5 flex gap-2">

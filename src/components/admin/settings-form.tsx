@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { updateSettings } from "@/lib/admin/settings-actions";
 import { useToast } from "@/components/admin/toast";
 import { toMinor, toMajor } from "@/lib/pricing/money";
+import { DELIVERY_METHODS, type DeliverySettings } from "@/lib/checkout/delivery";
 
 type S = {
   store_name: string; currency: string; flat_shipping_minor: number;
   free_shipping_threshold_minor: number | null; tax_rate_bps: number; support_email: string | null;
   support_phone: string | null; whatsapp: string | null; address: string | null;
   instagram_url: string | null; facebook_url: string | null;
-};
+} & DeliverySettings;
 export function SettingsForm({ initial }: { initial: S }) {
   const toast = useToast();
   const [pending, start] = useTransition();
@@ -26,6 +27,12 @@ export function SettingsForm({ initial }: { initial: S }) {
   const [address, setAddress] = useState(initial.address ?? "");
   const [instagram, setInstagram] = useState(initial.instagram_url ?? "");
   const [facebook, setFacebook] = useState(initial.facebook_url ?? "");
+  const [expressSurcharge, setExpressSurcharge] = useState(String(toMajor(initial.express_surcharge_minor)));
+  const [expressOn, setExpressOn] = useState(initial.express_enabled);
+  const [pickupOn, setPickupOn] = useState(initial.pickup_enabled);
+  const [notes, setNotes] = useState({
+    standard: initial.standard_description ?? "", express: initial.express_description ?? "", pickup: initial.pickup_description ?? "",
+  });
 
   function save() {
     start(async () => {
@@ -37,6 +44,9 @@ export function SettingsForm({ initial }: { initial: S }) {
         support_email: email || "",
         support_phone: phone || "", whatsapp: whatsapp || "", address: address || "",
         instagram_url: instagram || "", facebook_url: facebook || "",
+        express_surcharge_minor: toMinor(Number(expressSurcharge || 0)),
+        express_enabled: expressOn, pickup_enabled: pickupOn,
+        standard_description: notes.standard, express_description: notes.express, pickup_description: notes.pickup,
       });
       toast(res.ok ? "Settings saved" : res.error ?? "Could not save", res.ok ? "success" : "error");
     });
@@ -53,6 +63,20 @@ export function SettingsForm({ initial }: { initial: S }) {
         <Inp label="Flat shipping (LKR)" value={shipping} onChange={setShipping} type="number" />
         <Inp label="Free shipping over (LKR, blank = never)" value={freeThreshold} onChange={setFreeThreshold} type="number" />
         <Inp label="Tax rate (%)" value={taxPct} onChange={setTaxPct} type="number" />
+      </Section>
+
+      <Section title="Delivery methods" hint="Standard is always offered. Express = flat shipping + surcharge, never waived. Pickup is free. Leave a note blank to use the default.">
+        <Inp label="Express surcharge (LKR)" value={expressSurcharge} onChange={setExpressSurcharge} type="number" />
+        <div className="flex flex-col justify-end gap-2 pb-1">
+          <Toggle label="Offer express delivery" checked={expressOn} onChange={setExpressOn} />
+          <Toggle label="Offer store pickup" checked={pickupOn} onChange={setPickupOn} />
+        </div>
+        {DELIVERY_METHODS.map((m) => (
+          <Inp
+            key={m.id} label={`${m.label} note`} placeholder={m.description}
+            value={notes[m.id]} onChange={(v) => setNotes((n) => ({ ...n, [m.id]: v }))}
+          />
+        ))}
       </Section>
 
       <Section title="Contact & social" hint="Displayed in the storefront footer. Leave blank to hide.">
@@ -79,11 +103,20 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-function Inp({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-brand" />
+      {label}
+    </label>
+  );
+}
+
+function Inp({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm text-ink-soft">{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="h-11 w-full rounded-xl border border-line bg-paper px-3" />
+      <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="h-11 w-full rounded-xl border border-line bg-paper px-3" />
     </label>
   );
 }

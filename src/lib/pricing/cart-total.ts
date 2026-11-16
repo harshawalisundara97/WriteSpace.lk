@@ -11,6 +11,8 @@ export interface ShippingTaxSettings {
   free_shipping_threshold_minor: number | null;
   /** Tax in basis points. 0 = no tax. */
   tax_rate_bps: number;
+  /** Express surcharge over the flat fee; defaults to EXPRESS_SURCHARGE_MINOR. */
+  express_surcharge_minor?: number;
   /** Chosen delivery method; defaults to standard (cart / pre-selection). */
   delivery_method?: DeliveryMethodId;
 }
@@ -45,6 +47,7 @@ export function computeTotals(
       ? 0
       : deliveryFee(settings.delivery_method ?? DEFAULT_DELIVERY_METHOD, {
           flat_shipping_minor: settings.flat_shipping_minor,
+          express_surcharge_minor: settings.express_surcharge_minor,
           standardFree: promo.free_shipping || thresholdMet,
         });
 

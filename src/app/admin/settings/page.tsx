@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasSupabase } from "@/lib/env";
 import { demoSettings } from "@/lib/demo/data";
+import { toDeliverySettings } from "@/lib/checkout/delivery";
 import { SettingsForm } from "@/components/admin/settings-form";
 
 export default async function AdminSettingsPage() {
@@ -18,6 +19,7 @@ export default async function AdminSettingsPage() {
     address: (data as { address?: string | null })?.address ?? null,
     instagram_url: (data as { instagram_url?: string | null })?.instagram_url ?? null,
     facebook_url: (data as { facebook_url?: string | null })?.facebook_url ?? null,
+    ...toDeliverySettings(data),
   };
   return (
     <div className="space-y-6">

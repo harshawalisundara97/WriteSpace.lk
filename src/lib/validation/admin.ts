@@ -13,6 +13,10 @@ const FIELD_LABELS: Record<string, string> = {
   flat_shipping_minor: "Flat shipping",
   free_shipping_threshold_minor: "Free shipping threshold",
   tax_rate_bps: "Tax rate",
+  express_surcharge_minor: "Express surcharge",
+  standard_description: "Standard delivery note",
+  express_description: "Express delivery note",
+  pickup_description: "Store pickup note",
   parent_id: "Parent",
   image_url: "Image URL",
   link_url: "Link URL",
@@ -168,4 +172,12 @@ export const settingsSchema = z.object({
   address: nullableText(300),
   instagram_url: socialUrl,
   facebook_url: socialUrl,
+  // Delivery methods & fees (TASK-ADMIN-005). Optional so older callers keep
+  // working; defaults match the pre-TASK-ADMIN-005 constants.
+  express_surcharge_minor: z.number().int().min(0, "Must be 0 or more").default(40000),
+  express_enabled: z.boolean().default(true),
+  pickup_enabled: z.boolean().default(true),
+  standard_description: nullableText(120),
+  express_description: nullableText(120),
+  pickup_description: nullableText(120),
 });

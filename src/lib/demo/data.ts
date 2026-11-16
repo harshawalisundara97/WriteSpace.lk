@@ -1,6 +1,7 @@
 import type {
   Banner, Bundle, BundleItem, BundleWithItems, Category, Collection, PriceTier, ProductSpecs, ProductWithVariants, Promotion,
 } from "@/lib/types";
+import { DEFAULT_DELIVERY_SETTINGS } from "@/lib/checkout/delivery";
 
 // In-repo demo dataset mirroring supabase/seed.sql, used when Supabase isn't
 // configured so the storefront is viewable with zero setup.
@@ -142,6 +143,7 @@ export const demoSettings = {
   address: "128 Galle Road, Colombo 03, Sri Lanka",
   instagram_url: "https://instagram.com/writespace.lk",
   facebook_url: "https://facebook.com/writespace.lk",
+  ...DEFAULT_DELIVERY_SETTINGS,
 };
 
 // ---- admin demo helpers ----

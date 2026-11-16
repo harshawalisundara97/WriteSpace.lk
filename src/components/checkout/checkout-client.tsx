@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/pricing/money";
 import { createCheckout } from "@/lib/checkout/actions";
 import type { AddressInput } from "@/lib/validation/checkout";
-import { DELIVERY_METHODS, DEFAULT_DELIVERY_METHOD, deliveryMethod, type DeliveryMethodId } from "@/lib/checkout/delivery";
+import { DEFAULT_DELIVERY_METHOD, deliveryMethod, type DeliveryMethod, type DeliveryMethodId } from "@/lib/checkout/delivery";
 import type { CartLine } from "@/lib/types";
 import type { SavedAddress } from "@/lib/account/addresses";
 
@@ -16,7 +16,7 @@ interface Totals {
   subtotal_minor: number; discount_minor: number; shipping_minor: number; tax_minor: number; total_minor: number;
 }
 
-type DeliveryTotals = Record<DeliveryMethodId, { shipping_minor: number; total_minor: number }>;
+type DeliveryTotals = Partial<Record<DeliveryMethodId, { shipping_minor: number; total_minor: number }>>;
 
 function emptyAddress(email: string): AddressInput {
   return { full_name: "", email, phone: "", line1: "", line2: "", city: "", postal_code: "", country: "LK", notes: "" };
@@ -32,14 +32,16 @@ function addrToInput(a: SavedAddress, email: string): AddressInput {
 }
 
 export function CheckoutClient({
-  lines, totals, deliveryTotals, currency, publishableKey, siteUrl, savedAddresses, defaultEmail,
+  lines, totals, deliveryTotals, deliveryMethods, currency, publishableKey, siteUrl, savedAddresses, defaultEmail,
 }: {
-  lines: CartLine[]; totals: Totals; deliveryTotals: DeliveryTotals; currency: string; publishableKey: string | null; siteUrl: string; savedAddresses: SavedAddress[]; defaultEmail: string;
+  lines: CartLine[]; totals: Totals; deliveryTotals: DeliveryTotals; deliveryMethods: DeliveryMethod[]; currency: string; publishableKey: string | null; siteUrl: string; savedAddresses: SavedAddress[]; defaultEmail: string;
 }) {
-  const [method, setMethod] = useState<DeliveryMethodId>(DEFAULT_DELIVERY_METHOD);
+  const [method, setMethod] = useState<DeliveryMethodId>(
+    deliveryMethods.some((m) => m.id === DEFAULT_DELIVERY_METHOD) ? DEFAULT_DELIVERY_METHOD : (deliveryMethods[0]?.id ?? DEFAULT_DELIVERY_METHOD),
+  );
   const needsAddress = deliveryMethod(method).needsAddress;
   // Server-computed figures for the chosen method (re-verified in createCheckout).
-  const { shipping_minor, total_minor } = deliveryTotals[method];
+  const { shipping_minor, total_minor } = deliveryTotals[method] ?? { shipping_minor: totals.shipping_minor, total_minor: totals.total_minor };
   const [address, setAddress] = useState<AddressInput>(() => {
     const def = savedAddresses.find((a) => a.is_default);
     return def ? addrToInput(def, defaultEmail) : emptyAddress(defaultEmail);
@@ -91,8 +93,8 @@ export function CheckoutClient({
             <h2 className="font-display text-xl font-semibold">Delivery method</h2>
             <fieldset className="grid gap-3">
               <legend className="sr-only">Delivery method</legend>
-              {DELIVERY_METHODS.map((m) => {
-                const fee = deliveryTotals[m.id].shipping_minor;
+              {deliveryMethods.map((m) => {
+                const fee = deliveryTotals[m.id]?.shipping_minor ?? 0;
                 const active = method === m.id;
                 return (
                   <label

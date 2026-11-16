@@ -4,6 +4,7 @@ import type {
   Banner, Category, Collection, Product, ProductWithVariants, Promotion,
 } from "@/lib/types";
 import { hasSupabase } from "@/lib/env";
+import { toDeliverySettings } from "@/lib/checkout/delivery";
 import { variantColorName, COLOR_HEX } from "@/lib/catalog/variant-color";
 import {
   demoCategories, demoCollections, demoProducts, demoBanners, demoPromotions,
@@ -48,6 +49,7 @@ export async function getStoreSettings() {
     address: data?.address ?? null,
     instagram_url: data?.instagram_url ?? null,
     facebook_url: data?.facebook_url ?? null,
+    ...toDeliverySettings(data),
   };
 }
 

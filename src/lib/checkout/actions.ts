@@ -7,7 +7,7 @@ import { getActivePromotions, getStoreSettings } from "@/lib/catalog/queries";
 import { computeTotals } from "@/lib/pricing/cart-total";
 import { getPaymentProvider } from "@/lib/payments";
 import { checkoutSchema } from "@/lib/validation/checkout";
-import { deliveryMethod } from "@/lib/checkout/delivery";
+import { deliveryMethod, isDeliveryMethodEnabled, toDeliverySettings } from "@/lib/checkout/delivery";
 
 const HOLD_MINUTES = 15;
 
@@ -46,6 +46,9 @@ export async function createCheckout(raw: unknown): Promise<CheckoutResult> {
     getCartLines(), getPromoCode(), getActivePromotions(), getStoreSettings(),
   ]);
   if (lines.length === 0) return { ok: false, error: "Your cart is empty" };
+  if (!isDeliveryMethodEnabled(delivery_method, toDeliverySettings(settings))) {
+    return { ok: false, error: `${deliveryMethod(delivery_method).label} is not available right now` };
+  }
 
   // Stock sanity before reserving.
   for (const l of lines) {
@@ -58,6 +61,7 @@ export async function createCheckout(raw: unknown): Promise<CheckoutResult> {
       flat_shipping_minor: settings.flat_shipping_minor,
       free_shipping_threshold_minor: settings.free_shipping_threshold_minor,
       tax_rate_bps: settings.tax_rate_bps,
+      express_surcharge_minor: settings.express_surcharge_minor,
       delivery_method,
     },
     code,

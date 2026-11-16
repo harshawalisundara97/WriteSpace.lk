@@ -110,20 +110,20 @@ banners, reviews, categories, customers, staff, settings, audit, dashboard are
 |---|---|---|---|
 | TASK-ADMIN-002 | Central **permission registry** + guards (last-admin / self-demotion protection); verify `inviteStaff`/`setStaff` | — | ☑ |
 | TASK-ADMIN-003 | **Zod validation** for category / promotion / banner / settings / staff actions + uniform error surfacing | 002 | ☑ |
-| TASK-ADMIN-004 | **Admin action unit tests** (guards, CSV import, state transitions, bundle CRUD) | 001, 003 | ☐ |
+| TASK-ADMIN-004 | **Admin action unit tests** (guards, CSV import, state transitions, bundle CRUD) | 001, 003 | ☑ |
 
 ### Phase C — Complete partial features
 
 | ID | Objective | Depends on | Status |
 |---|---|---|---|
-| TASK-ADMIN-005 | **Admin-editable delivery methods & fees** (migrate `delivery.ts` constants → store settings) | 003 | ☐ |
-| TASK-ADMIN-006 | **Reports & analytics** page — date-ranged sales/tax/product reports + CSV export | — | ☐ |
+| TASK-ADMIN-005 | **Admin-editable delivery methods & fees** (migrate `delivery.ts` constants → store settings) | 003 | ☑ |
+| TASK-ADMIN-006 | **Reports & analytics** page — date-ranged sales/tax/product reports + CSV export | — | ☑ |
 
 ### Phase D — Enhancements (optional)
 
 | ID | Objective | Depends on | Status |
 |---|---|---|---|
-| TASK-ADMIN-007 | Bundle builder UX polish (search picker, live pricing preview) | 001 | ☐ |
+| TASK-ADMIN-007 | Bundle builder UX polish (search picker, live pricing preview) | 001 | ☑ |
 | TASK-ADMIN-008 | Connected-backend admin smoke verification (once Supabase live) | 001–006 | ☐ |
 
 ### Dependencies (summary)
@@ -249,6 +249,38 @@ migration).
   separate requests) — acceptable for a single-admin tool; revisit if needed.
 - Commit: _pending_.
 
+### TASK-ADMIN-007 — Bundle builder UX polish ☑ (2026-11-16)
+
+**Implemented**
+- Search picker replaces the plain product `<select>`: type-to-filter by
+  name / brand / slug / variant SKU or name (multi-term, accent-insensitive,
+  name-prefix ranked), keyboard nav (↑/↓/Enter/Esc), ARIA combobox. Products
+  already used in other rows are hidden (matches the `(bundle_id, product_id)` PK).
+- Live pricing preview: per-row line total (unit × qty tooltip) and a
+  "Storefront preview" panel — bundle price, struck-through items total,
+  saving in LKR and %, curated vs sum-of-items, unit count. Warns when the
+  curated price exceeds the items total or is invalid; save is blocked on an
+  invalid price. Math mirrors `bundlePricing` (first-variant fallback).
+
+**Files added**
+- `src/lib/admin/bundle-builder.ts` — `searchProducts`, `draftVariant`,
+  `parsePriceMinor`, `draftPricing` (pure, client-safe).
+- `src/components/admin/product-search-picker.tsx`.
+- `tests/unit/bundle-builder.test.ts` (10 tests).
+
+**Files modified**
+- `src/components/admin/bundles-manager.tsx` — uses the picker + preview.
+
+**Tests performed**
+- `tsc --noEmit` ✅ · `vitest run` ✅ 114/114 · eslint: 0 errors (2
+  pre-existing warnings in `bundles-manager.tsx`).
+- Not yet browser-checked; `npm run build` not run.
+
+**Remaining limitations**
+- `bundlePricing` and `draftPricing` are parallel implementations; a shared
+  core would need `bundles.ts` (server-only) split.
+- Commit: _pending_.
+
 ### TASK-ADMIN-002 — Permission registry + staff guards ☑ (2026-11-16)
 
 **Implemented**
@@ -286,3 +318,27 @@ live Supabase (TASK-ADMIN-008). Commit: _pending_.
   add new migrations, never edit old ones.
 - Defense in depth preserved (middleware + `requirePerm` + RLS); audit every
   write.
+
+### TASK-ADMIN-005 — Admin-editable delivery methods & fees ☑ (2026-11-16)
+
+**Implemented:** express surcharge, express/pickup availability and per-method
+checkout copy now live in `store_settings` and are edited under *Admin →
+Settings → Delivery methods*. Standard stays always-on (flat fee + free
+threshold). Checkout lists only enabled methods; `createCheckout` rejects a
+disabled method server-side; fees remain server-computed.
+
+**Files:** `supabase/migrations/0012_delivery_settings.sql` (new);
+`lib/checkout/delivery.ts` (`DeliverySettings`, `toDeliverySettings`,
+`availableDeliveryMethods`, `isDeliveryMethodEnabled`, surcharge param);
+`lib/pricing/cart-total.ts`; `lib/catalog/queries.ts`; `lib/demo/data.ts`;
+`lib/cart/summary.ts`; `lib/checkout/actions.ts`; `app/checkout/page.tsx`;
+`components/checkout/checkout-client.tsx`; `lib/validation/admin.ts`;
+`lib/admin/settings-actions.ts`; `app/admin/settings/page.tsx`;
+`components/admin/settings-form.tsx`; `tests/unit/delivery-settings.test.ts` (new).
+
+**Tests:** typecheck ✓, `vitest` 90/90 ✓ (8 new), `npm run build` ✓.
+
+**Limitations:** method labels and address rules stay in code; existing orders
+keep their snapshotted `shipping_minor`; migration 0012 must be applied before
+saving settings against a live DB. Browser check not run.
+
