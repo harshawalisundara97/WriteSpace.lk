@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getSitemapEntries } from "@/lib/catalog/queries";
 import { getBundleSlugs } from "@/lib/catalog/bundles";
+import { alternatesFor } from "@/lib/i18n/seo";
 
 export const revalidate = 3600;
 
@@ -14,6 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/products`, changeFrequency: "daily", priority: 0.9 },
     { url: `${BASE}/promotions`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/bundles`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/book-list`, changeFrequency: "monthly", priority: 0.6 },
   ];
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
@@ -35,5 +37,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...bundleRoutes];
+  // hreflang alternates for every URL (TASK-NEXT-010c).
+  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...bundleRoutes].map((e) => {
+    const path = e.url.slice(BASE.length) || "/";
+    const { languages } = alternatesFor(path, "en");
+    return { ...e, alternates: { languages: Object.fromEntries(Object.entries(languages).map(([k, v]) => [k, `${BASE}${v}`])) } };
+  });
 }

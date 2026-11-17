@@ -343,7 +343,7 @@ keep their snapshotted `shipping_minor`; migration 0012 must be applied before
 saving settings against a live DB. Browser check not run.
 
 
-### TASK-ADMIN-008 — Connected-backend smoke ◐ mostly done (2026-11-16)
+### TASK-ADMIN-008 — Connected-backend smoke ✅ done (2026-11-16, closed by 008b)
 
 **Setup:** local Supabase via Docker — `npx supabase@2.20.5 start -x studio,logflare,vector,imgproxy,edge-runtime --ignore-health-check`
 (studio/storage health checks are flaky on first boot). Migrations 0001–0013 + seed apply cleanly.
@@ -369,4 +369,15 @@ saving settings against a live DB. Browser check not run.
 - Pages for gated sections (e.g. `/admin/bundles`) are viewable (read-only) by staff without the perm.
 
 **Not covered:** product create/edit form, staff invite/role change, sales-report generation in the UI.
+
+**008b (2026-11-16)**
+- Added `checkPerm()` (non-throwing); every server action now returns `{ ok:false, error }` on a missing
+  permission. Verified live: no-perm staff clicking "Move to draft" on a bundle gets a toast, DB unchanged.
+- Found & fixed: editing any seeded product failed with "Invalid url" — seed images are root-relative
+  (`/images/...`) but the schema required an absolute URL. `imageUrl` now accepts http(s) URLs or `/paths`.
+- UI-verified as admin: product edit saves + audits `product.update`; staff role change (+ revert) audits
+  `staff.update`; invite of unknown email toasts an error; reports page renders. Staff without
+  `orders:write` are redirected from `/admin/reports` (by design).
+- Still open: gated section pages remain read-only viewable by staff without the perm.
+  `npm run typecheck` ✅ · `npm test` ✅ 115/115. `npm run build` not run (dev server held `.next`).
 Commit: _pending_.

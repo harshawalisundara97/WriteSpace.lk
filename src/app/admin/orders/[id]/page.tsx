@@ -16,9 +16,12 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
   const data = await getAdminOrder(id);
   if (!data) notFound();
   const { order, items, payment, refunds } = data;
+  const pm = (order as { payment_method?: string }).payment_method;
+  const invoicePaid = pm === "invoice" && (payment as { status?: string } | null)?.status === "succeeded";
   const activity = (data as { activity?: ActivityItem[] }).activity ?? [];
   const addr = order.shipping_address as Record<string, string> | null;
   const status = order.status as OrderStatus;
+  const gift = order as { gift_wrap?: boolean; gift_wrap_minor?: number; gift_message?: string | null; cod_fee_minor?: number; loyalty_points_redeemed?: number; loyalty_discount_minor?: number };
   const canRefund = ["paid", "fulfilled", "shipped", "delivered", "partially_refunded"].includes(status) && !!payment?.provider_payment_id;
 
   return (
@@ -29,6 +32,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
         description={`${order.email} · ${new Date(order.created_at).toLocaleString("en-GB")}`}
         actions={<>
           <Link href={`/admin/orders/${order.id}/invoice`} target="_blank"><Button variant="outline" size="sm">Print invoice</Button></Link>
+          <Link href={`/admin/orders/${order.id}/invoice?slip=1`} target="_blank"><Button variant="outline" size="sm">Packing slip</Button></Link>
           <StatusBadge status={status} />
         </>}
       />
@@ -49,10 +53,23 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
               <div className="flex justify-between"><dt className="text-ink-soft">Subtotal</dt><dd>{formatMoney(order.subtotal_minor, order.currency)}</dd></div>
               {order.discount_minor > 0 && <div className="flex justify-between"><dt className="text-ink-soft">Discount</dt><dd className="text-accent">− {formatMoney(order.discount_minor, order.currency)}</dd></div>}
               <div className="flex justify-between"><dt className="text-ink-soft">{deliveryMethod(order.delivery_method).label}</dt><dd>{order.shipping_minor === 0 ? "Free" : formatMoney(order.shipping_minor, order.currency)}</dd></div>
+              {(gift.loyalty_discount_minor ?? 0) > 0 && <div className="flex justify-between"><dt className="text-ink-soft">Loyalty points ({gift.loyalty_points_redeemed})</dt><dd>− {formatMoney(gift.loyalty_discount_minor!, order.currency)}</dd></div>}
+              {(gift.cod_fee_minor ?? 0) > 0 && <div className="flex justify-between"><dt className="text-ink-soft">Cash on delivery fee</dt><dd>{formatMoney(gift.cod_fee_minor!, order.currency)}</dd></div>}
+              {gift.gift_wrap && <div className="flex justify-between"><dt className="text-ink-soft">Gift wrap</dt><dd>{(gift.gift_wrap_minor ?? 0) > 0 ? formatMoney(gift.gift_wrap_minor!, order.currency) : "Free"}</dd></div>}
               {order.tax_minor > 0 && <div className="flex justify-between"><dt className="text-ink-soft">Tax</dt><dd>{formatMoney(order.tax_minor, order.currency)}</dd></div>}
               <div className="flex justify-between border-t border-line pt-2 font-semibold"><dt>Total</dt><dd>{formatMoney(order.total_minor, order.currency)}</dd></div>
             </dl>
           </Card>
+
+          {gift.gift_wrap && (
+            <Card className="border-brand/40">
+              <h2 className="mb-2 font-medium">🎁 Gift wrap requested</h2>
+              {gift.gift_message
+                ? <blockquote className="whitespace-pre-line border-l-2 border-brand pl-3 text-sm">{gift.gift_message}</blockquote>
+                : <p className="text-sm text-ink-soft">No message.</p>}
+              <p className="mt-2 text-xs text-ink-soft">Printed on the packing slip.</p>
+            </Card>
+          )}
 
           {addr && (
             <Card>
@@ -83,7 +100,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
 
         <div className="space-y-6">
           <Card>
-            <OrderControls orderId={order.id} status={status} totalMinor={order.total_minor} currency={order.currency} tracking={order.tracking_number} canRefund={canRefund} />
+            <OrderControls orderId={order.id} status={status} totalMinor={order.total_minor} currency={order.currency} tracking={order.tracking_number} courier={(order as { courier?: string | null }).courier ?? null} trackingUrl={(order as { tracking_url?: string | null }).tracking_url ?? null} canRefund={canRefund} paymentMethod={pm === "cod" || pm === "invoice" ? pm : "online"} invoicePaid={invoicePaid} />
           </Card>
           <Card>
             <h2 className="mb-4 font-medium">Activity</h2>

@@ -1,4 +1,6 @@
+import { SL_DISTRICTS } from "@/lib/checkout/cod";
 import { z } from "zod";
+import { COURIER_IDS } from "@/lib/orders/tracking";
 
 // Shared admin input schemas + uniform error surfacing (TASK-ADMIN-003).
 // Every admin server action returns `ActionResult`; validation failures become
@@ -180,4 +182,36 @@ export const settingsSchema = z.object({
   standard_description: nullableText(120),
   express_description: nullableText(120),
   pickup_description: nullableText(120),
+  // Cash on delivery (TASK-NEXT-002).
+  cod_enabled: z.boolean().default(false),
+  cod_fee_minor: z.number().int().min(0, "Must be 0 or more").default(15000),
+  cod_max_order_minor: z.number().int().min(0, "Must be 0 or more").nullable().default(2500000),
+  cod_districts: z.array(z.enum(SL_DISTRICTS)).default([...SL_DISTRICTS]),
+  // Gift wrap (TASK-NEXT-007).
+  gift_wrap_enabled: z.boolean().default(false),
+  gift_wrap_fee_minor: z.number().int().min(0, "Must be 0 or more").default(25000),
+  // Loyalty points (TASK-NEXT-008d).
+  loyalty_enabled: z.boolean().default(false),
+  loyalty_earn_per_minor: z.number().int().min(1, "Spend per point must be more than 0").default(10000),
+  loyalty_point_value_minor: z.number().int().min(1, "Point value must be more than 0").default(100),
+  loyalty_max_redeem_pct: z.number().int().min(0).max(100, "Max 100%").default(50),
+  loyalty_expiry_months: z.number().int().min(0).max(120, "120 months max").default(12),
 });
+
+// Manual loyalty adjustment (TASK-NEXT-008d). Positive credits, negative debits.
+export const loyaltyAdjustSchema = z.object({
+  customer_id: z.string().uuid(),
+  points: z.number().int("Whole points only").refine((n) => n !== 0, "Enter a non-zero amount")
+    .refine((n) => Math.abs(n) <= 100_000, "100,000 points max per adjustment"),
+  note: z.string().trim().min(3, "Add a reason (3+ characters)").max(200),
+});
+
+// Order courier tracking (TASK-NEXT-003). Empty strings clear a field.
+export const trackingSchema = z.object({
+  tracking_number: z.string().trim().max(60, "Tracking number is too long").optional().or(z.literal("")),
+  courier: z.enum(COURIER_IDS).optional().or(z.literal("")),
+  tracking_url: z.string().trim().max(500)
+    .refine((v) => v === "" || /^https?:\/\/\S+$/i.test(v), "Tracking link must start with http:// or https://")
+    .optional().or(z.literal("")),
+});
+export type TrackingInput = z.input<typeof trackingSchema>;

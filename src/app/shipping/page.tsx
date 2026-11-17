@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { ContentPage, ContentSection, ContentList } from "@/components/store/content-page";
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: "Shipping policy",
   description: "Delivery areas, timeframes, charges and dispatch details for WriteSpace.lk orders across Sri Lanka.",
-  alternates: { canonical: "/shipping" },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { ...META, alternates: await localeAlternates("/shipping") };
+}
 
 export default function ShippingPage() {
   return (

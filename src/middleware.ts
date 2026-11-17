@@ -1,12 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { LOCALE_COOKIE, isLocale } from "@/lib/i18n/config";
 
 export async function middleware(request: NextRequest) {
+  // ?lang=si|ta|en (TASK-NEXT-010c): apply to this render and remember it. The URL keeps
+  // its ?lang so hreflang alternates are crawlable without cookies.
+  const lang = request.nextUrl.searchParams.get("lang");
+  if (isLocale(lang)) request.cookies.set(LOCALE_COOKIE, lang);
   let response = NextResponse.next({ request });
+  const withLocale = (res: NextResponse) => {
+    if (isLocale(lang)) res.cookies.set(LOCALE_COOKIE, lang, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+    return res;
+  };
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return response; // not configured yet — don't block
+  if (!url || !anon) return withLocale(response); // not configured yet — don't block
 
   const supabase = createServerClient(url, anon, {
     cookies: {
@@ -43,7 +52,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(to);
   }
 
-  return response;
+  return withLocale(response);
 }
 
 export const config = {

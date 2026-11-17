@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 import { ContentPage, ContentSection } from "@/components/store/content-page";
 import { ContactForm } from "@/components/store/contact-form";
 import { getStoreSettings } from "@/lib/catalog/queries";
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: "Contact us",
   description:
     "Get in touch with WriteSpace.lk — questions about an order, a product or bulk enquiries. Send us a message and we'll reply by email.",
-  alternates: { canonical: "/contact" },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { ...META, alternates: await localeAlternates("/contact") };
+}
 
 export default async function ContactPage() {
   const s = await getStoreSettings();

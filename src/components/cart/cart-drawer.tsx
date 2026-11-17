@@ -9,9 +9,11 @@ import { getCartSummary, type CartSummary } from "@/lib/cart/summary";
 import { updateCartItem, removeCartItem, setPromoCode } from "@/lib/cart/actions";
 import { formatMoney } from "@/lib/pricing/money";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 export function CartDrawer() {
   const cart = useCart();
+  const { t } = useI18n();
   const [summary, setSummary] = useState<CartSummary | null>(null);
   const [codeInput, setCodeInput] = useState("");
   const [pending, startTransition] = useTransition();
@@ -60,14 +62,16 @@ export function CartDrawer() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
-              <h2 className="font-display text-lg font-semibold">Your cart</h2>
-              <button aria-label="Close cart" onClick={cart.close} className="grid h-9 w-9 place-items-center rounded-full hover:bg-paper-2"><X className="h-5 w-5" /></button>
+              <h2 className="font-display text-lg font-semibold">{t("cart.title")}</h2>
+              <button aria-label={t("cart.close")} onClick={cart.close} className="grid h-9 w-9 place-items-center rounded-full hover:bg-paper-2"><X className="h-5 w-5" /></button>
             </div>
 
             {progress !== null && lines.length > 0 && (
               <div className="border-b border-line px-5 py-3">
                 <p className="mb-2 text-xs text-ink-soft">
-                  {remaining > 0 ? <>Add <strong>{formatMoney(remaining, currency)}</strong> for free shipping</> : <>You’ve unlocked free shipping! 🎉</>}
+                  {remaining > 0
+                    ? t("cart.freeShipAdd").split("{amount}").map((part, i) => i === 0 ? <span key={i}>{part}</span> : <span key={i}><strong>{formatMoney(remaining, currency)}</strong>{part}</span>)
+                    : t("cart.freeShipUnlocked")}
                 </p>
                 <div className="h-1.5 overflow-hidden rounded-full bg-paper-2">
                   <motion.div className="h-full rounded-full bg-mint" animate={{ width: `${progress}%` }} transition={{ ease: [0.22,1,0.36,1] }} />
@@ -78,9 +82,9 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {lines.length === 0 ? (
                 <div className="py-8 text-center text-ink-soft">
-                  <p className="font-medium text-ink">Your cart is empty</p>
-                  <p className="mt-1 text-sm">Find something lovely to write with.</p>
-                  <Button className="mt-4" variant="outline" onClick={cart.close}>Browse products</Button>
+                  <p className="font-medium text-ink">{t("cart.empty")}</p>
+                  <p className="mt-1 text-sm">{t("cart.emptyHint")}</p>
+                  <Button className="mt-4" variant="outline" onClick={cart.close}>{t("cart.browse")}</Button>
                 </div>
               ) : (
                 <ul className="space-y-4">
@@ -101,7 +105,7 @@ export function CartDrawer() {
                               <span className="w-6 text-center text-sm">{l.quantity}</span>
                               <button disabled={pending || l.quantity >= l.available} onClick={() => changeQty(l.variant_id, l.quantity + 1)} className="grid h-7 w-7 place-items-center disabled:opacity-40"><Plus className="h-3.5 w-3.5" /></button>
                             </div>
-                            <button disabled={pending} onClick={() => remove(l.variant_id)} aria-label="Remove" className="text-ink-soft hover:text-accent"><Trash2 className="h-4 w-4" /></button>
+                            <button disabled={pending} onClick={() => remove(l.variant_id)} aria-label={t("cart.remove")} className="text-ink-soft hover:text-accent"><Trash2 className="h-4 w-4" /></button>
                           </div>
                         </div>
                         <span className="text-sm font-semibold">{formatMoney(l.unit_price_minor * l.quantity, currency)}</span>
@@ -113,7 +117,7 @@ export function CartDrawer() {
 
               {summary && summary.crossSell.length > 0 && (
                 <div className="mt-6">
-                  <p className="mb-3 text-sm font-medium">You might also like</p>
+                  <p className="mb-3 text-sm font-medium">{t("cart.alsoLike")}</p>
                   <div className="grid grid-cols-2 gap-3">
                     {summary.crossSell.map((c) => (
                       <div key={c.productId}>
@@ -127,7 +131,7 @@ export function CartDrawer() {
                         <div className="mt-0.5 flex items-center justify-between">
                           <span className="text-xs text-ink-soft">{formatMoney(c.price_minor, c.currency)}</span>
                           {c.variantId && (
-                            <button onClick={() => addCross(c.variantId!)} disabled={pending} aria-label={`Add ${c.name}`} className="grid h-6 w-6 place-items-center rounded-full bg-ink text-paper hover:bg-accent disabled:opacity-50"><Plus className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => addCross(c.variantId!)} disabled={pending} aria-label={t("cart.add", { name: c.name })} className="grid h-6 w-6 place-items-center rounded-full bg-ink text-paper hover:bg-accent disabled:opacity-50"><Plus className="h-3.5 w-3.5" /></button>
                           )}
                         </div>
                       </div>
@@ -142,22 +146,25 @@ export function CartDrawer() {
                 <div className="mb-3 flex gap-2">
                   <div className="flex flex-1 items-center gap-2 rounded-full border border-line px-3">
                     <Tag className="h-4 w-4 text-ink-soft" />
-                    <input value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder="Promo code" className="h-10 flex-1 bg-transparent text-sm outline-none uppercase placeholder:normal-case placeholder:text-ink-soft" />
+                    <input value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder={t("cart.promoCode")} className="h-10 flex-1 bg-transparent text-sm outline-none uppercase placeholder:normal-case placeholder:text-ink-soft" />
                   </div>
-                  <Button variant="outline" size="sm" onClick={applyCode} disabled={pending}>Apply</Button>
+                  <Button variant="outline" size="sm" onClick={applyCode} disabled={pending}>{t("cart.apply")}</Button>
                 </div>
                 <dl className="space-y-1 text-sm">
-                  <Row label="Subtotal" value={formatMoney(totals.subtotal_minor, currency)} />
-                  {totals.discount_minor > 0 && <Row label="Discount" value={`− ${formatMoney(totals.discount_minor, currency)}`} accent />}
-                  <Row label="Shipping" value={totals.shipping_minor === 0 ? "Free" : formatMoney(totals.shipping_minor, currency)} />
-                  {totals.tax_minor > 0 && <Row label="Tax" value={formatMoney(totals.tax_minor, currency)} />}
+                  <Row label={t("cart.subtotal")} value={formatMoney(totals.subtotal_minor, currency)} />
+                  {totals.discount_minor > 0 && <Row label={t("cart.discount")} value={`− ${formatMoney(totals.discount_minor, currency)}`} accent />}
+                  <Row label={t("cart.shipping")} value={totals.shipping_minor === 0 ? t("cart.free") : formatMoney(totals.shipping_minor, currency)} />
+                  {totals.tax_minor > 0 && <Row label={t("cart.tax")} value={formatMoney(totals.tax_minor, currency)} />}
                 </dl>
                 <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-                  <span className="font-medium">Total</span>
+                  <span className="font-medium">{t("cart.total")}</span>
                   <span className="font-display text-lg font-semibold">{formatMoney(totals.total_minor, currency)}</span>
                 </div>
                 <Link href="/checkout" onClick={cart.close} className="mt-4 block">
-                  <Button className="w-full" size="lg">Checkout</Button>
+                  <Button className="w-full" size="lg">{t("cart.checkout")}</Button>
+                </Link>
+                <Link href="/quote" onClick={cart.close} className="mt-2 block text-center text-sm text-ink-soft hover:text-ink hover:underline">
+                  {t("cart.bulkQuote")}
                 </Link>
               </div>
             )}

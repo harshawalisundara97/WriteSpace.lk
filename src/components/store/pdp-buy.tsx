@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Minus, Plus, ShoppingBag, Check, Truck, ShieldCheck, RefreshCw } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Check, Truck, ShieldCheck, RefreshCw, Bell } from "lucide-react";
+import { requestStockAlert } from "@/lib/stock-alerts/actions";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/components/cart/cart-provider";
 import { formatMoney } from "@/lib/pricing/money";
@@ -121,6 +122,8 @@ export function PdpBuy({ variants, currency, tiers = [] }: { variants: V[]; curr
         </div>
       )}
 
+      {available <= 0 && <NotifyMe key={selected.id} variantId={selected.id} />}
+
       <div className="flex items-center gap-3">
         <div className="flex items-center rounded-full border border-line">
           <button aria-label="Decrease quantity" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-11 w-11 place-items-center"><Minus className="h-4 w-4" /></button>
@@ -147,5 +150,40 @@ export function PdpBuy({ variants, currency, tiers = [] }: { variants: V[]; curr
         <li className="flex flex-col items-center gap-1"><Truck className="h-5 w-5 text-mint" /> Island-wide delivery</li>
       </ul>
     </div>
+  );
+}
+
+function NotifyMe({ variantId }: { variantId: string }) {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setState("saving");
+    const res = await requestStockAlert({ variant_id: variantId, email });
+    if (res.ok) setState("done");
+    else { setState("idle"); setError(res.error ?? "Something went wrong"); }
+  }
+
+  if (state === "done") {
+    return (
+      <p role="status" className="flex items-center gap-2 rounded-xl bg-mint/10 px-4 py-3 text-sm">
+        <Check className="h-4 w-4 shrink-0 text-mint" /> We&apos;ll email {email} once when it&apos;s back.
+      </p>
+    );
+  }
+  return (
+    <form onSubmit={submit} className="space-y-2 rounded-xl border border-line p-4">
+      <p className="flex items-center gap-2 text-sm font-medium"><Bell className="h-4 w-4 text-brand" /> Email me when it&apos;s back in stock</p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label className="sr-only" htmlFor={`notify-${variantId}`}>Email</label>
+        <input id={`notify-${variantId}`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+          className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-paper px-3 text-sm outline-none focus:ring-2 focus:ring-brand/30" />
+        <Button type="submit" variant="outline" disabled={state === "saving"}>{state === "saving" ? "Saving…" : "Notify me"}</Button>
+      </div>
+      {error && <p className="text-sm text-accent">{error}</p>}
+    </form>
   );
 }

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { ContentPage, ContentSection, ContentList } from "@/components/store/content-page";
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: "About us",
   description:
     "WriteSpace.lk is a Sri Lankan stationery store — pens, paper, art supplies and desk goods for students, creatives and offices, delivered island-wide.",
-  alternates: { canonical: "/about" },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { ...META, alternates: await localeAlternates("/about") };
+}
 
 export default function AboutPage() {
   return (

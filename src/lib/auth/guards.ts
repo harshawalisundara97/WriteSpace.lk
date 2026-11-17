@@ -48,3 +48,13 @@ export async function requirePerm(permission: Permission): Promise<AdminContext>
   if (!can(ctx, permission)) throw new Error("Forbidden: missing permission " + permission);
   return ctx;
 }
+
+export type PermCheck = { ok: true; ctx: AdminContext } | { ok: false; error: string };
+
+// Non-throwing check for server actions: refusal comes back as { ok:false, error }
+// so the client can toast it instead of hitting the error boundary.
+export async function checkPerm(permission: Permission): Promise<PermCheck> {
+  const ctx = await requireAdmin();
+  if (!can(ctx, permission)) return { ok: false, error: "You don't have permission to do that (" + permission + ")." };
+  return { ok: true, ctx };
+}

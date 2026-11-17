@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n, LanguageSwitcher } from "@/components/i18n/i18n-provider";
 import { Mail, Phone, MapPin, Instagram, Facebook, MessageCircle } from "lucide-react";
 
 export type FooterInfo = {
@@ -12,6 +15,7 @@ export type FooterInfo = {
 };
 export function SiteFooter({ info }: { info?: FooterInfo }) {
   const i = info ?? {};
+  const { t } = useI18n();
   const waDigits = i.whatsapp?.replace(/[^\d]/g, "");
   const socials = [
     i.instagram_url && { href: i.instagram_url, icon: Instagram, label: "Instagram" },
@@ -27,7 +31,7 @@ export function SiteFooter({ info }: { info?: FooterInfo }) {
         <div>
           <p className="font-display text-xl font-semibold text-brand">WriteSpace<span className="text-accent">.lk</span></p>
           <p className="mt-3 max-w-xs text-sm text-ink-soft">
-            Stationery for kids and grown-ups — pens, paper, art supplies and desk goods, delivered across Sri Lanka.
+            {t("footer.tagline")}
           </p>
           {socials.length > 0 && (
             <div className="mt-4 flex gap-2">
@@ -40,10 +44,10 @@ export function SiteFooter({ info }: { info?: FooterInfo }) {
             </div>
           )}
         </div>
-        <FooterCol title="Shop" links={[["All products", "/products"], ["School packs", "/bundles"], ["Kids", "/c/kids-corner"], ["Office & Desk", "/c/office-desk"], ["Promotions", "/promotions"]]} />
-        <FooterCol title="Account" links={[["Sign in", "/login"], ["Register", "/register"], ["My orders", "/account/orders"]]} />
+        <FooterCol title={t("footer.shop")} links={[[t("footer.allProducts"), "/products"], [t("nav.schoolPacks"), "/bundles"], [t("footer.bookList"), "/book-list"], [t("footer.kids"), "/c/kids-corner"], [t("footer.office"), "/c/office-desk"], [t("footer.promotions"), "/promotions"], [t("footer.bulkQuote"), "/quote"]]} />
+        <FooterCol title={t("footer.account")} links={[[t("footer.signIn"), "/login"], [t("footer.register"), "/register"], [t("footer.myOrders"), "/account/orders"]]} />
         <div>
-          <h4 className="text-sm font-semibold text-ink">{hasContact ? "Contact" : "Help"}</h4>
+          <h4 className="text-sm font-semibold text-ink">{hasContact ? t("footer.contact") : t("footer.help")}</h4>
           {hasContact ? (
             <ul className="mt-3 space-y-2 text-sm text-ink-soft">
               {i.support_email && (
@@ -58,23 +62,23 @@ export function SiteFooter({ info }: { info?: FooterInfo }) {
             </ul>
           ) : (
             <ul className="mt-3 space-y-2 text-sm text-ink-soft">
-              <li><Link href="/account/orders" className="hover:text-accent">Track order</Link></li>
-              <li><Link href="/promotions" className="hover:text-accent">Promotions</Link></li>
+              <li><Link href="/track" className="hover:text-accent">{t("footer.trackOrder")}</Link></li>
+              <li><Link href="/promotions" className="hover:text-accent">{t("footer.promotions")}</Link></li>
             </ul>
           )}
         </div>
       </div>
       <div className="border-t border-line">
         <div className="ws-container flex flex-col items-center justify-between gap-3 py-6 text-xs text-ink-soft sm:flex-row">
-          <p>© {new Date().getFullYear()} {i.store_name || "WriteSpace.lk"} — All prices in LKR.</p>
+          <div className="flex items-center gap-3"><p>© {new Date().getFullYear()} {i.store_name || "WriteSpace.lk"} — {t("footer.pricesInLkr")}</p><LanguageSwitcher /></div>
           <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <Link href="/about" className="hover:text-accent">About</Link>
-            <Link href="/contact" className="hover:text-accent">Contact</Link>
-            <Link href="/faq" className="hover:text-accent">FAQ</Link>
-            <Link href="/shipping" className="hover:text-accent">Shipping</Link>
-            <Link href="/returns" className="hover:text-accent">Returns &amp; Refunds</Link>
-            <Link href="/privacy" className="hover:text-accent">Privacy</Link>
-            <Link href="/terms" className="hover:text-accent">Terms</Link>
+            <Link href="/about" className="hover:text-accent">{t("footer.about")}</Link>
+            <Link href="/contact" className="hover:text-accent">{t("footer.contact")}</Link>
+            <Link href="/faq" className="hover:text-accent">{t("footer.faq")}</Link>
+            <Link href="/shipping" className="hover:text-accent">{t("footer.shipping")}</Link>
+            <Link href="/returns" className="hover:text-accent">{t("footer.returns")}</Link>
+            <Link href="/privacy" className="hover:text-accent">{t("footer.privacy")}</Link>
+            <Link href="/terms" className="hover:text-accent">{t("footer.terms")}</Link>
           </nav>
         </div>
       </div>

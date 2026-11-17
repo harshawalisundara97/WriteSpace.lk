@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Package, User, Heart, ArrowRight } from "lucide-react";
+import { Package, User, Heart, ArrowRight, Sparkles } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/user";
 import { getMyOrders } from "@/lib/account/queries";
+import { getMyLoyalty } from "@/lib/loyalty/queries";
 import { StatusBadge } from "@/components/store/status-badge";
 import { formatMoney } from "@/lib/pricing/money";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ export const metadata = { title: "My account" };
 const fmtDate = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso));
 
 export default async function AccountOverview() {
-  const [user, orders] = await Promise.all([getCurrentUser(), getMyOrders()]);
+  const [user, orders, loyalty] = await Promise.all([getCurrentUser(), getMyOrders(), getMyLoyalty()]);
   const firstName = (user?.full_name ?? "there").split(" ")[0];
   const active = orders.filter((o) => ["paid", "fulfilled", "shipped"].includes(o.status)).length;
   const recent = orders.slice(0, 3);
@@ -37,6 +38,31 @@ export default async function AccountOverview() {
           <p className="mt-1 flex items-center gap-1 font-medium">Edit details <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></p>
         </Link>
       </div>
+
+      {loyalty.enabled && (
+        <section aria-labelledby="loyalty-h" className="rounded-2xl border border-line bg-paper p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="loyalty-h" className="flex items-center gap-2 text-sm text-ink-soft"><Sparkles className="h-4 w-4 text-brand" /> Loyalty points</h2>
+              <p className="mt-1 font-display text-2xl font-semibold">{loyalty.balance.toLocaleString("en-LK")} pts</p>
+            </div>
+            <p className="text-sm text-ink-soft">Worth {formatMoney(loyalty.balance * loyalty.pointValueMinor, "LKR")} off your next order</p>
+          </div>
+          {loyalty.history.length > 0 && (
+            <ul className="mt-4 divide-y divide-line text-sm">
+              {loyalty.history.slice(0, 5).map((r) => (
+                <li key={r.id} className="flex items-center justify-between py-2">
+                  <span>
+                    {KIND_LABEL[r.kind]}{r.order_number ? ` · ${r.order_number}` : ""}
+                    {r.kind === "earn" && r.expires_at && <span className="ml-2 text-ink-soft">expires {fmtDate(String(r.expires_at))}</span>}
+                  </span>
+                  <span className={r.points > 0 ? "font-medium text-green-700" : "text-ink-soft"}>{r.points > 0 ? "+" : ""}{r.points}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -72,6 +98,8 @@ export default async function AccountOverview() {
     </div>
   );
 }
+
+const KIND_LABEL = { earn: "Earned", redeem: "Used at checkout", adjust: "Adjustment", reverse: "Refund reversal" } as const;
 
 function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (

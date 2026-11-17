@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getBundleBySlug, bundlePricing, itemVariant } from "@/lib/catalog/bundles";
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: b.name,
     description: b.description ?? undefined,
-    alternates: { canonical: `/bundles/${b.slug}` },
+    alternates: await localeAlternates(`/bundles/${b.slug}`),
   };
 }
 

@@ -830,8 +830,244 @@ alter table addresses enable row level security;
 create policy address_owner_all on addresses for all
   using (customer_id = auth.uid()) with check (customer_id = auth.uid());
 
+-- Cash on Delivery — TASK-NEXT-002
+-- Rules live in src/lib/checkout/cod.ts. COD orders commit stock at checkout,
+-- stay 'pending_payment' (awaiting payment) and are marked paid on delivery.
+alter table store_settings add column if not exists cod_enabled boolean not null default false;
+alter table store_settings add column if not exists cod_fee_minor int not null default 15000
+  check (cod_fee_minor >= 0);
+alter table store_settings add column if not exists cod_max_order_minor int default 2500000
+  check (cod_max_order_minor is null or cod_max_order_minor >= 0);
+alter table store_settings add column if not exists cod_districts text[] not null default array[
+  'Ampara','Anuradhapura','Badulla','Batticaloa','Colombo','Galle','Gampaha',
+  'Hambantota','Jaffna','Kalutara','Kandy','Kegalle','Kilinochchi','Kurunegala',
+  'Mannar','Matale','Matara','Monaragala','Mullaitivu','Nuwara Eliya',
+  'Polonnaruwa','Puttalam','Ratnapura','Trincomalee','Vavuniya'
+]::text[];
+
+alter table orders add column if not exists payment_method text not null default 'online'
+  check (payment_method in ('online', 'cod'));
+-- COD fee snapshotted at checkout (already included in total_minor).
+alter table orders add column if not exists cod_fee_minor int not null default 0
+  check (cod_fee_minor >= 0);
+
+-- ========== 0015_order_tracking ==========
+-- Guest order tracking — TASK-NEXT-003 (courier + tracking link shown on /track)
+alter table orders add column if not exists courier text
+  check (courier is null or courier in ('domex', 'pronto', 'koombiyo', 'slpost', 'other'));
+alter table orders add column if not exists tracking_url text
+  check (tracking_url is null or tracking_url ~* '^https?://');
+
+-- ========== 0016_stock_alerts ==========
+-- Back-in-stock alerts — TASK-NEXT-005
+-- Shopper leaves an email on an out-of-stock variant; when stock is added back
+-- (admin adjust / CSV import) one email goes out and notified_at is set.
+-- Rules: src/lib/stock-alerts/. Writes are server-side only (service role).
+create table if not exists stock_alerts (
+  id uuid primary key default gen_random_uuid(),
+  variant_id uuid not null references product_variants(id) on delete cascade,
+  email text not null check (email ~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  customer_id uuid references customers(id) on delete set null,
+  created_at timestamptz not null default now(),
+  notified_at timestamptz
+);
+-- One pending alert per email + variant (re-subscribing after a notification is allowed).
+create unique index if not exists uq_stock_alerts_pending
+  on stock_alerts(variant_id, lower(email)) where notified_at is null;
+create index if not exists idx_stock_alerts_variant on stock_alerts(variant_id) where notified_at is null;
+
+alter table stock_alerts enable row level security;
+drop policy if exists stock_alerts_admin_read on stock_alerts;
+create policy stock_alerts_admin_read on stock_alerts for select using (is_admin());
+
+-- ========== 0017_abandoned_cart ==========
+-- Abandoned-cart email — TASK-NEXT-006
+-- A cron (/api/cron/abandoned-carts) emails signed-in customers whose cart has
+-- been idle > 24h, once per idle period. Rules: src/lib/cart/abandoned.ts.
+alter table carts add column if not exists reminder_sent_at timestamptz;
+alter table customers add column if not exists cart_reminders_opt_out boolean not null default false;
+
+-- Any change to a cart's items counts as activity: bump carts.updated_at and
+-- re-arm the reminder for the next idle period.
+create or replace function touch_cart_on_item_change() returns trigger as $$
+begin
+  update carts set updated_at = now(), reminder_sent_at = null
+   where id = coalesce(new.cart_id, old.cart_id);
+  return null;
+end;
+$$ language plpgsql;
+
+drop trigger if exists t_cart_items_touch on cart_items;
+create trigger t_cart_items_touch after insert or update or delete on cart_items
+  for each row execute function touch_cart_on_item_change();
+
+create index if not exists idx_carts_reminder on carts(updated_at)
+  where customer_id is not null and reminder_sent_at is null;
+
+-- ========== 0018_gift_wrap ==========
+-- Gift wrap & message — TASK-NEXT-007
+-- Admin-priced flat gift-wrap fee; message printed on the packing slip.
+-- Rules: src/lib/checkout/gift.ts.
+alter table store_settings add column if not exists gift_wrap_enabled boolean not null default false;
+alter table store_settings add column if not exists gift_wrap_fee_minor int not null default 25000
+  check (gift_wrap_fee_minor >= 0);
+
+alter table orders add column if not exists gift_wrap boolean not null default false;
+-- Fee snapshotted at checkout (already included in total_minor).
+alter table orders add column if not exists gift_wrap_minor int not null default 0
+  check (gift_wrap_minor >= 0);
+alter table orders add column if not exists gift_message text
+  check (gift_message is null or char_length(gift_message) <= 200);
+
 -- ========== make yourself an admin ==========
 -- AFTER you register an account in the app, run this (replace the email):
 -- insert into admin_users (id, role)
 --   select id, 'admin' from customers where email = 'you@example.com'
 --   on conflict (id) do update set role = 'admin';
+
+-- ========== 0019_loyalty ==========
+-- Loyalty points — TASK-NEXT-008a
+-- Earn 1 pt per LKR 100 of merchandise (after discounts) on delivered orders;
+-- 1 pt = LKR 1 off at checkout, capped at a % of subtotal; points expire
+-- 12 months after they were earned (FIFO). All rates admin-editable.
+-- Rules: src/lib/loyalty/rules.ts. Ledger writes are server-side only (service role).
+alter table store_settings add column if not exists loyalty_enabled boolean not null default false;
+alter table store_settings add column if not exists loyalty_earn_per_minor int not null default 10000
+  check (loyalty_earn_per_minor > 0);
+alter table store_settings add column if not exists loyalty_point_value_minor int not null default 100
+  check (loyalty_point_value_minor > 0);
+alter table store_settings add column if not exists loyalty_max_redeem_pct int not null default 50
+  check (loyalty_max_redeem_pct between 0 and 100);
+alter table store_settings add column if not exists loyalty_expiry_months int not null default 12
+  check (loyalty_expiry_months between 0 and 120); -- 0 = never expire
+
+-- Append-only ledger. Balance = unexpired credits minus debits, consumed FIFO.
+create table if not exists loyalty_ledger (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references customers(id) on delete cascade,
+  order_id uuid references orders(id) on delete set null,
+  kind text not null check (kind in ('earn', 'redeem', 'adjust', 'reverse')),
+  points int not null check (points <> 0),
+  expires_at timestamptz,
+  note text check (note is null or char_length(note) <= 200),
+  actor_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_loyalty_customer on loyalty_ledger(customer_id, created_at);
+-- One earn entry per order.
+create unique index if not exists uq_loyalty_earn_order on loyalty_ledger(order_id) where kind = 'earn';
+
+alter table orders add column if not exists loyalty_points_redeemed int not null default 0
+  check (loyalty_points_redeemed >= 0);
+-- Discount snapshotted at checkout (already deducted from total_minor).
+alter table orders add column if not exists loyalty_discount_minor int not null default 0
+  check (loyalty_discount_minor >= 0);
+
+alter table loyalty_ledger enable row level security;
+drop policy if exists loyalty_self_read on loyalty_ledger;
+create policy loyalty_self_read on loyalty_ledger for select using (customer_id = auth.uid() or is_admin());
+
+-- ========== 0020_quotes ==========
+-- B2B / office quotes — TASK-NEXT-009a
+-- Shopper requests a quote from the cart; admin prices each line (and optional
+-- shipping), sends it; shopper accepts before valid_until → converted to an order.
+-- Rules: src/lib/quotes/rules.ts. Writes are server-side only (service role).
+do $$ begin
+  create type quote_status as enum ('requested', 'priced', 'accepted', 'converted', 'declined', 'expired');
+exception when duplicate_object then null; end $$;
+
+create table if not exists quotes (
+  id uuid primary key default gen_random_uuid(),
+  quote_number text not null unique,
+  customer_id uuid references customers(id) on delete set null,
+  status quote_status not null default 'requested',
+  company text check (company is null or char_length(company) <= 120),
+  contact_name text not null check (char_length(contact_name) between 1 and 120),
+  email text not null check (email ~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  phone text,
+  notes text check (notes is null or char_length(notes) <= 1000),
+  admin_notes text check (admin_notes is null or char_length(admin_notes) <= 1000),
+  shipping_minor int not null default 0 check (shipping_minor >= 0),
+  subtotal_minor int not null default 0 check (subtotal_minor >= 0),
+  total_minor int not null default 0 check (total_minor >= 0),
+  valid_until timestamptz,
+  order_id uuid references orders(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_quotes_status on quotes(status, created_at desc);
+create index if not exists idx_quotes_customer on quotes(customer_id);
+
+create table if not exists quote_items (
+  id uuid primary key default gen_random_uuid(),
+  quote_id uuid not null references quotes(id) on delete cascade,
+  variant_id uuid references product_variants(id) on delete set null,
+  name text not null,
+  sku text,
+  qty int not null check (qty > 0 and qty <= 10000),
+  -- Catalogue/tier price at request time; admin sets quoted_unit_minor.
+  list_unit_minor int not null check (list_unit_minor >= 0),
+  quoted_unit_minor int check (quoted_unit_minor is null or quoted_unit_minor >= 0)
+);
+create index if not exists idx_quote_items_quote on quote_items(quote_id);
+
+alter table quotes enable row level security;
+alter table quote_items enable row level security;
+drop policy if exists quotes_self_read on quotes;
+create policy quotes_self_read on quotes for select using (customer_id = auth.uid() or is_admin());
+drop policy if exists quote_items_read on quote_items;
+create policy quote_items_read on quote_items for select using (
+  exists (select 1 from quotes q where q.id = quote_id and (q.customer_id = auth.uid() or is_admin()))
+);
+
+-- ========== 0021_loyalty_restore ==========
+-- Loyalty points — TASK-NEXT-008c
+-- Points redeemed at checkout are debited when the order is created. If the order
+-- is later cancelled (gateway failure, failed payment webhook, expired stock hold,
+-- admin cancel) this trigger credits them back once. Rules: src/lib/loyalty/.
+create or replace function loyalty_restore_on_cancel() returns trigger as $$
+declare
+  months int;
+begin
+  if new.status = 'cancelled' and old.status <> 'cancelled'
+     and new.customer_id is not null and new.loyalty_points_redeemed > 0
+     and not exists (select 1 from loyalty_ledger where order_id = new.id and kind = 'adjust' and note = 'restore:cancelled') then
+    select loyalty_expiry_months into months from store_settings where id = 1;
+    insert into loyalty_ledger (customer_id, order_id, kind, points, expires_at, note)
+    values (new.customer_id, new.id, 'adjust', new.loyalty_points_redeemed,
+            case when coalesce(months, 12) = 0 then null else now() + make_interval(months => coalesce(months, 12)) end,
+            'restore:cancelled');
+    insert into audit_logs (action, entity, entity_id, after)
+    values ('loyalty.restore', 'orders', new.id, jsonb_build_object('points', new.loyalty_points_redeemed, 'customer_id', new.customer_id));
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists trg_loyalty_restore on orders;
+create trigger trg_loyalty_restore after update of status on orders
+  for each row execute function loyalty_restore_on_cancel();
+
+-- ========== 0022_quote_access ==========
+-- B2B quotes — TASK-NEXT-009c
+-- Unguessable link token so a (possibly guest) buyer can view their priced quote
+-- at /quote/view/<token> without signing in; sent_at records the last send.
+alter table quotes add column if not exists access_token text not null
+  default replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
+create unique index if not exists uq_quotes_access_token on quotes(access_token);
+alter table quotes add column if not exists sent_at timestamptz;
+
+-- ========== 0023_quote_orders ==========
+-- B2B quotes → orders — TASK-NEXT-009d
+-- Buyer accepts a priced quote online, giving a delivery address and optional PO
+-- number; staff convert it into an order paid by invoice (bank transfer):
+-- stock committed at conversion, fulfil/ship before payment, mark paid later.
+alter table quotes add column if not exists delivery_address jsonb;
+alter table quotes add column if not exists po_number text check (po_number is null or char_length(po_number) <= 60);
+alter table quotes add column if not exists accepted_at timestamptz;
+
+alter table orders drop constraint if exists orders_payment_method_check;
+alter table orders add constraint orders_payment_method_check check (payment_method in ('online', 'cod', 'invoice'));
+alter table orders add column if not exists quote_id uuid references quotes(id) on delete set null;
+alter table orders add column if not exists po_number text check (po_number is null or char_length(po_number) <= 60);
+create unique index if not exists uq_orders_quote on orders(quote_id) where quote_id is not null;

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm, type AdminContext } from "@/lib/auth/guards";
+import { checkPerm, type AdminContext } from "@/lib/auth/guards";
 import { hasSupabase } from "@/lib/env";
 import { DEMO_MESSAGE } from "@/lib/validation/admin";
 import {
@@ -28,7 +28,9 @@ const actorOf = (ctx: AdminContext) => ({ id: ctx.userId, role: ctx.role as Staf
 // Grant admin/staff access to an EXISTING account (they must have registered).
 // By design no invite email is sent and no auth user is created.
 export async function inviteStaff(email: string, role: StaffRole, permissions: string[]): Promise<Result> {
-  const ctx = await requirePerm("staff:write");
+  const perm = await checkPerm("staff:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = staffInviteSchema.safeParse({ email, role, permissions });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -47,7 +49,9 @@ export async function inviteStaff(email: string, role: StaffRole, permissions: s
 }
 
 export async function setStaff(userId: string, role: StaffRole, permissions: string[]): Promise<Result> {
-  const ctx = await requirePerm("staff:write");
+  const perm = await checkPerm("staff:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = staffInputSchema.safeParse({ role, permissions });
   if (!parsed.success || typeof userId !== "string" || !userId) return { ok: false, error: "Invalid input" };
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -65,7 +69,9 @@ export async function setStaff(userId: string, role: StaffRole, permissions: str
 }
 
 export async function removeStaff(userId: string): Promise<Result> {
-  const ctx = await requirePerm("staff:write");
+  const perm = await checkPerm("staff:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   if (typeof userId !== "string" || !userId) return { ok: false, error: "Invalid input" };
   if (userId === ctx.userId) return { ok: false, error: "You can't remove your own access." };
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };

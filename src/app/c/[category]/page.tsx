@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import type { Metadata } from "next";
 import { CatalogFilters } from "@/components/store/catalog-filters";
 import { ProductGrid } from "@/components/store/product-grid";
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   return {
     title: cat.name,
     description,
-    alternates: { canonical: `/c/${cat.slug}` },
+    alternates: await localeAlternates(`/c/${cat.slug}`),
     openGraph: { title: `${cat.name} · WriteSpace.lk`, description, type: "website" },
   };
 }

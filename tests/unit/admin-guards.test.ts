@@ -18,7 +18,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => createFakeDb(() => ({ data: state.adminRow })).db,
 }));
 
-import { getAdminContext, requireAdmin, requirePerm, can } from "@/lib/auth/guards";
+import { getAdminContext, requireAdmin, requirePerm, checkPerm, can } from "@/lib/auth/guards";
 
 describe("admin guards", () => {
   const env = { ...process.env };
@@ -58,5 +58,12 @@ describe("admin guards", () => {
     state.adminRow = { role: "staff", permissions: ["orders:write"] };
     await expect(requirePerm("orders:write")).resolves.toMatchObject({ role: "staff" });
     await expect(requirePerm("refunds:create")).rejects.toThrow("Forbidden: missing permission refunds:create");
+  });
+
+  it("checkPerm returns ok:false instead of throwing on refusal", async () => {
+    state.user = { id: "s1" };
+    state.adminRow = { role: "staff", permissions: ["orders:write"] };
+    await expect(checkPerm("orders:write")).resolves.toMatchObject({ ok: true, ctx: { role: "staff" } });
+    await expect(checkPerm("refunds:create")).resolves.toMatchObject({ ok: false, error: expect.stringContaining("refunds:create") });
   });
 });

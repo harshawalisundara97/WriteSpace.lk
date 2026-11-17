@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { checkPerm } from "@/lib/auth/guards";
 import { hasSupabase } from "@/lib/env";
 import { type ActionResult, DEMO_MESSAGE, bannerSchema, dbErrorMessage, idSchema, parseInput, promoSchema } from "@/lib/validation/admin";
 
 export async function savePromotion(raw: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("promotions:write");
+  const perm = await checkPerm("promotions:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(promoSchema, raw, "Invalid promotion");
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -30,7 +32,9 @@ export async function savePromotion(raw: unknown): Promise<ActionResult> {
 }
 
 export async function deletePromotion(id: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("promotions:write");
+  const perm = await checkPerm("promotions:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(idSchema, id);
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -44,7 +48,9 @@ export async function deletePromotion(id: unknown): Promise<ActionResult> {
 }
 
 export async function saveBanner(raw: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("promotions:write");
+  const perm = await checkPerm("promotions:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(bannerSchema, raw, "Invalid banner");
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -67,7 +73,9 @@ export async function saveBanner(raw: unknown): Promise<ActionResult> {
 }
 
 export async function deleteBanner(id: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("promotions:write");
+  const perm = await checkPerm("promotions:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(idSchema, id);
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };

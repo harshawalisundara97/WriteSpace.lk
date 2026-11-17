@@ -31,3 +31,18 @@ describe("order state machine", () => {
     expect(() => assertTransition("paid", "fulfilled")).not.toThrow();
   });
 });
+
+describe("cash on delivery transitions", () => {
+  it("fulfils and ships while awaiting payment", () => {
+    expect(canTransition("pending_payment", "fulfilled", "cod")).toBe(true);
+    expect(canTransition("pending_payment", "paid", "cod")).toBe(false);
+    expect(nextStatuses("shipped", "cod")).toEqual(["delivered", "cancelled"]);
+  });
+  it("allows a refused delivery to be cancelled", () => {
+    expect(canTransition("shipped", "cancelled", "cod")).toBe(true);
+    expect(canTransition("shipped", "cancelled")).toBe(false);
+  });
+  it("leaves online orders unchanged", () => {
+    expect(canTransition("pending_payment", "fulfilled")).toBe(false);
+  });
+});

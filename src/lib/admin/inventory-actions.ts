@@ -2,10 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { checkPerm } from "@/lib/auth/guards";
+import { notifyBackInStock } from "@/lib/stock-alerts/notify";
 
 export async function adjustInventory(variantId: string, newOnHand: number, reason: string): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await requirePerm("inventory:write");
+  const perm = await checkPerm("inventory:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   if (newOnHand < 0) return { ok: false, error: "Stock can't be negative" };
   const db = createAdminClient();
   const { data: inv, error: readErr } = await db.from("inventory").select("on_hand").eq("variant_id", variantId).maybeSingle();
@@ -18,6 +21,8 @@ export async function adjustInventory(variantId: string, newOnHand: number, reas
     await db.from("inventory_ledger").insert({ variant_id: variantId, change, reason: "manual_adjust", note: reason || null, actor: ctx.userId });
   }
   await db.from("audit_logs").insert({ actor: ctx.userId, action: "inventory.adjust", entity: "inventory", entity_id: variantId, before: { on_hand: prev }, after: { on_hand: newOnHand, reason } });
+  // Stock added back: email anyone waiting on this variant (never fails the adjust).
+  if (change > 0) await notifyBackInStock(db, [variantId], ctx.userId);
   revalidatePath("/admin/inventory");
   revalidatePath("/admin");
   return { ok: true };

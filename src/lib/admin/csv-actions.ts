@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { checkPerm } from "@/lib/auth/guards";
 import { toMinor } from "@/lib/pricing/money";
+import { notifyBackInStock } from "@/lib/stock-alerts/notify";
 
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -34,12 +35,15 @@ function splitRow(line: string): string[] {
 
 // Upsert products + variants from CSV. Products keyed by slug, variants by SKU.
 export async function importProductsCsv(text: string): Promise<{ ok: boolean; created: number; updated: number; error?: string }> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return { ...perm, created: 0, updated: 0 };
+  const ctx = perm.ctx;
   const db = createAdminClient();
   const rows = parseCsv(text);
   if (rows.length === 0) return { ok: false, created: 0, updated: 0, error: "No rows found" };
 
   let created = 0, updated = 0;
+  const restocked: string[] = [];
   // Group rows by slug.
   const bySlug = new Map<string, Record<string, string>[]>();
   for (const r of rows) {
@@ -70,11 +74,13 @@ export async function importProductsCsv(text: string): Promise<{ ok: boolean; cr
       };
       const { data: v } = await db.from("product_variants").upsert(variantRow, { onConflict: "sku" }).select("id").single();
       if (v?.id) {
+        if (Number(r.stock || 0) > 0) restocked.push(v.id);
         await db.from("inventory").upsert({ variant_id: v.id, on_hand: Number(r.stock || 0) }, { onConflict: "variant_id" });
       }
     }
   }
 
+  await notifyBackInStock(db, restocked, ctx.userId);
   await db.from("audit_logs").insert({ actor: ctx.userId, action: "products.import", entity: "products", after: { created, updated } });
   revalidatePath("/admin/products");
   revalidatePath("/products");

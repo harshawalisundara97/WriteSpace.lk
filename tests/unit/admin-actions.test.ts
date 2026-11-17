@@ -4,7 +4,7 @@ import { createFakeDb, type FakeCall, type Responder } from "./helpers/fake-db";
 const h = vi.hoisted(() => ({
   responder: null as unknown as Responder,
   calls: [] as FakeCall[],
-  perm: vi.fn(async (_p: string) => ({ userId: "admin-1", role: "admin", permissions: [] })),
+  perm: vi.fn(async (_p: string): Promise<{ ok: true; ctx: unknown } | { ok: false; error: string }> => ({ ok: true, ctx: { userId: "admin-1", role: "admin", permissions: [] } })),
   shipped: vi.fn(async () => {}),
   refunded: vi.fn(async () => {}),
   gatewayRefund: vi.fn(async () => ({ providerRefundId: "re_1", status: "succeeded" })),
@@ -12,7 +12,7 @@ const h = vi.hoisted(() => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/auth/guards", () => ({ requirePerm: h.perm }));
+vi.mock("@/lib/auth/guards", () => ({ checkPerm: h.perm }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => {
     const { db, calls } = createFakeDb((c) => h.responder(c));
@@ -41,9 +41,11 @@ beforeEach(() => {
 afterEach(() => { process.env = { ...env }; });
 
 describe("permission enforcement", () => {
-  it("propagates Forbidden from requirePerm before touching the DB", async () => {
-    h.perm.mockRejectedValueOnce(new Error("Forbidden: missing permission products:write"));
-    await expect(deleteBundle("b1")).rejects.toThrow("Forbidden");
+  it("returns { ok:false } on a permission refusal without touching the DB", async () => {
+    h.perm.mockResolvedValueOnce({ ok: false, error: "no perm" });
+    expect(await deleteBundle("b1")).toEqual({ ok: false, error: "no perm" });
+    h.perm.mockResolvedValueOnce({ ok: false, error: "no perm" });
+    expect(await importProductsCsv("slug,sku\na,b")).toEqual({ ok: false, error: "no perm", created: 0, updated: 0 });
     expect(h.calls).toHaveLength(0);
   });
 

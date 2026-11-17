@@ -7,6 +7,9 @@ import { getAllCategories, getStoreSettings } from "@/lib/catalog/queries";
 import { getCartCount } from "@/lib/cart/actions";
 import { getWishlistItems } from "@/lib/account/wishlist";
 import { getCurrentUser } from "@/lib/auth/user";
+import { getLocale } from "@/lib/i18n/server";
+import { LOCALE_TAGS } from "@/lib/i18n/config";
+import { messagesFor } from "@/lib/i18n/dictionaries";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const display = Fraunces({ variable: "--font-display", subsets: ["latin"], weight: ["500", "600", "700"] });
@@ -19,7 +22,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: "WriteSpace.lk",
   keywords: ["stationery Sri Lanka", "pens", "notebooks", "art supplies", "school supplies", "office supplies", "WriteSpace"],
-  alternates: { canonical: "/" },
+  // Canonical/hreflang are per page (localeAlternates) — a layout-level canonical would leak to every page.
   openGraph: {
     type: "website",
     siteName: "WriteSpace.lk",
@@ -36,14 +39,14 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [categories, count, settings, wishlist, user] = await Promise.all([
-    getAllCategories(), getCartCount(), getStoreSettings(), getWishlistItems(), getCurrentUser(),
+  const [categories, count, settings, wishlist, user, locale] = await Promise.all([
+    getAllCategories(), getCartCount(), getStoreSettings(), getWishlistItems(), getCurrentUser(), getLocale(),
   ]);
   return (
-    <html lang="en" className={`${sans.variable} ${display.variable} h-full antialiased`}>
+    <html lang={LOCALE_TAGS[locale]} className={`${sans.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
         <CartProvider initialCount={count}>
-          <Chrome categories={categories} info={settings} wishlist={wishlist} signedIn={!!user}>{children}</Chrome>
+          <Chrome categories={categories} info={settings} wishlist={wishlist} signedIn={!!user} locale={locale} messages={messagesFor(locale)}>{children}</Chrome>
         </CartProvider>
       </body>
     </html>

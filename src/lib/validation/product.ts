@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// Absolute http(s) URL (uploads) or a root-relative path (seeded /images/...).
+export const imageUrl = z
+  .string()
+  .max(500)
+  .refine((v) => /^https?:\/\/\S+$/i.test(v) || /^\/(?!\/)\S*$/.test(v), "Image must be an http(s) URL or a /path");
+
 export const variantSchema = z.object({
   id: z.string().uuid().optional(),
   sku: z.string().min(1, "SKU required").max(60),
@@ -20,7 +26,7 @@ export const productSchema = z.object({
   category_id: z.string().uuid().nullable().optional(),
   age_group: z.enum(["kids", "adults", "all"]),
   status: z.enum(["draft", "published"]),
-  images: z.array(z.object({ url: z.string().url(), alt: z.string().optional() })).default([]),
+  images: z.array(z.object({ url: imageUrl, alt: z.string().optional() })).default([]),
   seo_title: z.string().max(200).optional().or(z.literal("")),
   seo_description: z.string().max(300).optional().or(z.literal("")),
   specs: z.object({

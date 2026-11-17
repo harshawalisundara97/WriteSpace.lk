@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { ContentPage, ContentSection } from "@/components/store/content-page";
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: "FAQ",
   description:
     "Answers to common questions about WriteSpace.lk — ordering, stationery products, GSM and paper sizes, delivery across Sri Lanka, payments, returns and bulk/school orders.",
-  alternates: { canonical: "/faq" },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { ...META, alternates: await localeAlternates("/faq") };
+}
 
 type QA = { q: string; a: React.ReactNode };
 

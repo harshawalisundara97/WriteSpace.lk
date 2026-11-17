@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { checkPerm } from "@/lib/auth/guards";
 import { productSchema } from "@/lib/validation/product";
 import { normalizeTiers } from "@/lib/catalog/pricing-tiers";
 
 export async function saveProduct(raw: unknown): Promise<{ ok: boolean; id?: string; error?: string }> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = productSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid product" };
   const p = parsed.data;
@@ -66,8 +68,10 @@ export async function saveProduct(raw: unknown): Promise<{ ok: boolean; id?: str
   return { ok: true, id: productId };
 }
 
-export async function setProductStatus(id: string, status: "draft" | "published"): Promise<{ ok: boolean }> {
-  const ctx = await requirePerm("products:write");
+export async function setProductStatus(id: string, status: "draft" | "published"): Promise<{ ok: boolean; error?: string }> {
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const db = createAdminClient();
   await db.from("products").update({ status }).eq("id", id);
   await db.from("audit_logs").insert({ actor: ctx.userId, action: "product.status", entity: "products", entity_id: id, after: { status } });
@@ -76,8 +80,10 @@ export async function setProductStatus(id: string, status: "draft" | "published"
   return { ok: true };
 }
 
-export async function deleteProduct(id: string): Promise<{ ok: boolean }> {
-  const ctx = await requirePerm("products:write");
+export async function deleteProduct(id: string): Promise<{ ok: boolean; error?: string }> {
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const db = createAdminClient();
   await db.from("products").delete().eq("id", id);
   await db.from("audit_logs").insert({ actor: ctx.userId, action: "product.delete", entity: "products", entity_id: id });
@@ -88,7 +94,8 @@ export async function deleteProduct(id: string): Promise<{ ok: boolean }> {
 
 // Upload an image to the public product-images bucket; returns its public URL.
 export async function uploadProductImage(formData: FormData): Promise<{ ok: boolean; url?: string; error?: string }> {
-  await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
   const file = formData.get("file");
   if (!(file instanceof File)) return { ok: false, error: "No file" };
   if (file.size > 5 * 1024 * 1024) return { ok: false, error: "Max 5MB" };
@@ -102,7 +109,9 @@ export async function uploadProductImage(formData: FormData): Promise<{ ok: bool
 }
 
 export async function bulkProductAction(ids: string[], action: "publish" | "draft" | "delete"): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   if (ids.length === 0) return { ok: false, error: "Nothing selected" };
   const db = createAdminClient();
   if (action === "delete") {
