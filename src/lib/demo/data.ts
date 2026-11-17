@@ -1,3 +1,6 @@
+import { DEFAULT_COD_SETTINGS } from "@/lib/checkout/cod";
+import { DEFAULT_GIFT_SETTINGS } from "@/lib/checkout/gift";
+import { DEFAULT_LOYALTY_SETTINGS } from "@/lib/loyalty/rules";
 import type {
   Banner, Bundle, BundleItem, BundleWithItems, Category, Collection, PriceTier, ProductSpecs, ProductWithVariants, Promotion,
 } from "@/lib/types";
@@ -144,6 +147,12 @@ export const demoSettings = {
   instagram_url: "https://instagram.com/writespace.lk",
   facebook_url: "https://facebook.com/writespace.lk",
   ...DEFAULT_DELIVERY_SETTINGS,
+  ...DEFAULT_COD_SETTINGS,
+  cod_enabled: true,
+  ...DEFAULT_GIFT_SETTINGS,
+  gift_wrap_enabled: true,
+  ...DEFAULT_LOYALTY_SETTINGS,
+  loyalty_enabled: true,
 };
 
 // ---- admin demo helpers ----
@@ -226,7 +235,7 @@ export interface DemoActivity { id: string; action: string; after: unknown; crea
 export interface DemoOrder {
   id: string; order_number: string; email: string; status: string; currency: string;
   subtotal_minor: number; discount_minor: number; shipping_minor: number; tax_minor: number; total_minor: number;
-  shipping_address: Record<string, string>; delivery_method?: string; tracking_number: string | null; notes: string | null;
+  shipping_address: Record<string, string>; delivery_method?: string; tracking_number: string | null; courier?: string | null; tracking_url?: string | null; notes: string | null;
   created_at: string; placed_at: string | null;
   items: DemoOrderItem[];
   payment: { id: string; provider: string; provider_payment_id: string | null; status: string; amount_minor: number; currency: string } | null;
@@ -255,7 +264,7 @@ export const demoOrders: DemoOrder[] = [
     id: "o2", order_number: "WS-20261104-2210", email: "dilshan@example.com", status: "shipped", currency: "LKR",
     subtotal_minor: 420000, discount_minor: 0, shipping_minor: 0, tax_minor: 0, total_minor: 420000,
     shipping_address: addr("Dilshan Rodrigo", "18 Temple Lane", "Kandy", "+94 71 987 6543"),
-    tracking_number: "LK4820193", notes: "Gift wrap requested.", created_at: d(3), placed_at: d(3),
+    tracking_number: "LK4820193", courier: "domex", tracking_url: "https://www.domex.lk/", notes: "Gift wrap requested.", created_at: d(3), placed_at: d(3),
     items: [{ id: "oi3", product_name: "Bamboo Desk Organizer", sku: "WS-ORG-BMB", unit_price_minor: 420000, quantity: 1, line_total_minor: 420000, variant_id: "p6-v0" }],
     payment: { id: "pay2", provider: "stripe", provider_payment_id: "pi_demo_2", status: "succeeded", amount_minor: 420000, currency: "LKR" },
     activity: [
@@ -356,3 +365,16 @@ export const demoAddresses = [
   { id: "addr-home", label: "Home", full_name: "Demo Shopper", phone: "+94 77 000 0000", line1: "42 Galle Road", line2: null as string | null, city: "Colombo 03", postal_code: "00300" as string | null, country: "LK", is_default: true },
   { id: "addr-office", label: "Office", full_name: "Demo Shopper", phone: "+94 11 234 5678", line1: "120 Union Place", line2: "4th Floor" as string | null, city: "Colombo 02", postal_code: "00200" as string | null, country: "LK", is_default: false },
 ];
+
+// ---- loyalty demo (TASK-NEXT-008b) ----
+export function demoLoyalty() {
+  const day = 86400_000;
+  const at = (n: number) => new Date(Date.now() - n * day).toISOString();
+  const exp = (n: number) => new Date(Date.now() - n * day + 365 * day).toISOString();
+  const history = [
+    { id: "lp3", kind: "reverse" as const, points: -5, note: null, created_at: at(2), expires_at: null, order_number: "WS-10418" },
+    { id: "lp2", kind: "earn" as const, points: 48, note: null, created_at: at(9), expires_at: exp(9), order_number: "WS-10412" },
+    { id: "lp1", kind: "earn" as const, points: 120, note: null, created_at: at(40), expires_at: exp(40), order_number: "WS-10377" },
+  ];
+  return { enabled: true, balance: 163, pointValueMinor: 100, history };
+}

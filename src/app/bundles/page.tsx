@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { getBundles } from "@/lib/catalog/bundles";
 import { BundleCard } from "@/components/store/bundle-card";
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: "Bundles & school packs",
   description: "Curated stationery bundles and grade-by-grade school packs — everything on the list, added to your cart in one click.",
-  alternates: { canonical: "/bundles" },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { ...META, alternates: await localeAlternates("/bundles") };
+}
 
 export default async function BundlesPage() {
   const bundles = await getBundles();

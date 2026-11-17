@@ -1,4 +1,7 @@
 import "server-only";
+import { toCodSettings } from "@/lib/checkout/cod";
+import { toGiftSettings } from "@/lib/checkout/gift";
+import { toLoyaltySettings } from "@/lib/loyalty/rules";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Banner, Category, Collection, Product, ProductWithVariants, Promotion,
@@ -50,6 +53,9 @@ export async function getStoreSettings() {
     instagram_url: data?.instagram_url ?? null,
     facebook_url: data?.facebook_url ?? null,
     ...toDeliverySettings(data),
+    ...toCodSettings(data),
+    ...toGiftSettings(data),
+    ...toLoyaltySettings(data),
   };
 }
 
@@ -138,6 +144,15 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
   const { data } = await supabase
     .from("products").select(PRODUCT_SELECT).eq("slug", slug).eq("status", "published").maybeSingle();
   return (data as unknown as ProductWithVariants | null) ?? null;
+}
+
+export async function getProductsByIds(ids: string[]): Promise<ProductWithVariants[]> {
+  const unique = Array.from(new Set(ids)).filter(Boolean);
+  if (!unique.length) return [];
+  if (!hasSupabase()) return demoProducts.filter((p) => unique.includes(p.id));
+  const supabase = await createClient();
+  const { data } = await supabase.from("products").select(PRODUCT_SELECT).eq("status", "published").in("id", unique);
+  return (data ?? []) as unknown as ProductWithVariants[];
 }
 
 export async function getRelatedProducts(categoryId: string | null, excludeId: string, limit = 4): Promise<ProductWithVariants[]> {

@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { ProductGrid } from "@/components/store/product-grid";
 import { SectionHeader } from "@/components/store/section-header";
 import { getActivePromotions, getCollectionProducts } from "@/lib/catalog/queries";
 import { formatMoney } from "@/lib/pricing/money";
 
 export const revalidate = 60;
-export const metadata = { title: "Promotions & deals" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Promotions & deals", alternates: await localeAlternates("/promotions") };
+}
 
 export default async function PromotionsPage() {
   const [promotions, deals] = await Promise.all([

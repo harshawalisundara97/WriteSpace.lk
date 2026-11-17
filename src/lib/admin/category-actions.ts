@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { checkPerm } from "@/lib/auth/guards";
 import { hasSupabase } from "@/lib/env";
 import { type ActionResult, DEMO_MESSAGE, categorySchema, collectionSchema, dbErrorMessage, idSchema, parseInput } from "@/lib/validation/admin";
 
@@ -12,7 +12,9 @@ function revalidateCatalog() {
 }
 
 export async function saveCategory(raw: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(categorySchema, raw, "Invalid category");
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -27,7 +29,9 @@ export async function saveCategory(raw: unknown): Promise<ActionResult> {
 }
 
 export async function deleteCategory(id: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(idSchema, id);
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -40,7 +44,9 @@ export async function deleteCategory(id: unknown): Promise<ActionResult> {
 }
 
 export async function saveCollection(raw: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(collectionSchema, raw, "Invalid collection");
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
@@ -55,7 +61,9 @@ export async function saveCollection(raw: unknown): Promise<ActionResult> {
 }
 
 export async function deleteCollection(id: unknown): Promise<ActionResult> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const parsed = parseInput(idSchema, id);
   if (!parsed.ok) return parsed;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };

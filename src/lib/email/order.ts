@@ -19,7 +19,7 @@ const BRAND = "#4f46e5";
 const ACCENT = "#ef5a4c";
 
 // Branded, email-client-safe shell (inline styles, table layout).
-function shell(title: string, body: string, store = "WriteSpace.lk"): string {
+export function shell(title: string, body: string, store = "WriteSpace.lk"): string {
   return `<!doctype html><html><body style="margin:0;background:#f6f5f2;padding:24px 0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#2b2b2b">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
     <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#fff;border:1px solid #ecebe7;border-radius:16px;overflow:hidden">

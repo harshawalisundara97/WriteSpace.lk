@@ -4,11 +4,18 @@ import { getCartSummary } from "@/lib/cart/summary";
 import { Button } from "@/components/ui/button";
 import { getMyAddresses } from "@/lib/account/addresses";
 import { getCurrentUser } from "@/lib/auth/user";
+import { getStoreSettings } from "@/lib/catalog/queries";
+import { toCodSettings } from "@/lib/checkout/cod";
+import { toGiftSettings } from "@/lib/checkout/gift";
+import { toLoyaltySettings } from "@/lib/loyalty/rules";
+import { getMyLoyalty } from "@/lib/loyalty/queries";
 
 export const metadata = { title: "Checkout" };
 
 export default async function CheckoutPage() {
-  const [summary, savedAddresses, user] = await Promise.all([getCartSummary(), getMyAddresses(), getCurrentUser()]);
+  const [summary, savedAddresses, user, settings] = await Promise.all([getCartSummary(), getMyAddresses(), getCurrentUser(), getStoreSettings()]);
+  const loyaltySettings = toLoyaltySettings(settings);
+  const loyalty = user && loyaltySettings.loyalty_enabled ? { settings: loyaltySettings, balance: (await getMyLoyalty()).balance } : null;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
 
@@ -37,6 +44,9 @@ export default async function CheckoutPage() {
         siteUrl={siteUrl}
         savedAddresses={savedAddresses}
         defaultEmail={user?.email ?? ""}
+        cod={toCodSettings(settings)}
+        gift={toGiftSettings(settings)}
+        loyalty={loyalty}
       />
     </div>
   );

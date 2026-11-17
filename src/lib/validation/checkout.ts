@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { PAYMENT_METHOD_IDS } from "@/lib/checkout/cod";
+import { GIFT_MESSAGE_MAX } from "@/lib/checkout/gift";
 import { DELIVERY_METHOD_IDS, DEFAULT_DELIVERY_METHOD, deliveryMethod } from "@/lib/checkout/delivery";
 
 export const addressSchema = z.object({
@@ -22,6 +24,14 @@ export const checkoutSchema = addressSchema
     line1: z.string().max(200).optional().or(z.literal("")),
     city: z.string().max(100).optional().or(z.literal("")),
     delivery_method: z.enum(DELIVERY_METHOD_IDS).default(DEFAULT_DELIVERY_METHOD),
+    payment_method: z.enum(PAYMENT_METHOD_IDS).default("online"),
+    // District — required (and checked against admin rules) for cash on delivery.
+    district: z.string().max(40).optional().or(z.literal("")),
+    // Gift wrap & message (TASK-NEXT-007); fee re-checked against settings server-side.
+    gift_wrap: z.boolean().default(false),
+    // Loyalty points to redeem (TASK-NEXT-008c); re-checked against balance + cap server-side.
+    loyalty_points: z.number().int("Points must be a whole number").min(0).max(10_000_000).default(0),
+    gift_message: z.string().max(GIFT_MESSAGE_MAX, `Gift message: ${GIFT_MESSAGE_MAX} characters max`).optional().or(z.literal("")),
   })
   .superRefine((v, ctx) => {
     if (!deliveryMethod(v.delivery_method).needsAddress) return;

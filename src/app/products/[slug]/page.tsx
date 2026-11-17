@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PdpBuy } from "@/components/store/pdp-buy";
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: p.seo_title ?? p.name,
     description: p.seo_description ?? p.description ?? undefined,
     openGraph: { title: p.name, images: p.images?.[0]?.url ? [p.images[0].url] : [] },
+    alternates: await localeAlternates(`/products/${p.slug}`),
   };
 }
 

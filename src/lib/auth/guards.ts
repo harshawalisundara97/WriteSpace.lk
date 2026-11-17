@@ -35,9 +35,26 @@ export function can(ctx: AdminContext, permission: Permission): boolean {
   return hasPermission(ctx.role === "admin" ? "admin" : "staff", ctx.permissions, permission);
 }
 
+// Hard gate for admin-role-only pages (e.g. audit log) — staff are sent back.
+export async function requireAdminRole(): Promise<AdminContext> {
+  const ctx = await requireAdmin();
+  if (ctx.role !== "admin") redirect("/admin");
+  return ctx;
+}
+
 // Throw-style check for server actions.
 export async function requirePerm(permission: Permission): Promise<AdminContext> {
   const ctx = await requireAdmin();
   if (!can(ctx, permission)) throw new Error("Forbidden: missing permission " + permission);
   return ctx;
+}
+
+export type PermCheck = { ok: true; ctx: AdminContext } | { ok: false; error: string };
+
+// Non-throwing check for server actions: refusal comes back as { ok:false, error }
+// so the client can toast it instead of hitting the error boundary.
+export async function checkPerm(permission: Permission): Promise<PermCheck> {
+  const ctx = await requireAdmin();
+  if (!can(ctx, permission)) return { ok: false, error: "You don't have permission to do that (" + permission + ")." };
+  return { ok: true, ctx };
 }

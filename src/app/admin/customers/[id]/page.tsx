@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getAdminCustomer } from "@/lib/admin/customer-queries";
 import { BlockButton } from "@/components/admin/block-button";
+import { LoyaltyPanel } from "@/components/admin/loyalty-panel";
+import { getAdminCustomerLoyalty } from "@/lib/loyalty/admin-queries";
 import { StatusBadge } from "@/components/store/status-badge";
 import { formatMoney } from "@/lib/pricing/money";
 
@@ -10,6 +12,7 @@ export default async function AdminCustomerDetail({ params }: { params: Promise<
   const data = await getAdminCustomer(id);
   if (!data) notFound();
   const { customer, orders } = data;
+  const loyalty = await getAdminCustomerLoyalty(customer.id);
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -19,6 +22,7 @@ export default async function AdminCustomerDetail({ params }: { params: Promise<
         </div>
         <BlockButton customerId={customer.id} blocked={customer.is_blocked} />
       </div>
+      <LoyaltyPanel customerId={customer.id} loyalty={loyalty} />
       <div className="overflow-hidden rounded-2xl border border-line">
         <table className="w-full text-sm">
           <thead className="bg-paper-2 text-left text-ink-soft"><tr><th className="px-4 py-3">Order</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Total</th></tr></thead>

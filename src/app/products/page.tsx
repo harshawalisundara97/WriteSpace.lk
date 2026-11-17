@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { CatalogFilters } from "@/components/store/catalog-filters";
 import { ProductGrid } from "@/components/store/product-grid";
 import { getAllCategories, getFacets, getProducts } from "@/lib/catalog/queries";
 import { SPEC_FIELDS, type SpecKey } from "@/lib/catalog/specs";
 
-export const metadata = { title: "All products" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "All products", alternates: await localeAlternates("/products") };
+}
 
 type SP = Record<string, string | string[] | undefined>;
 

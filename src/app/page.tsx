@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import Link from "next/link";
 import { Hero } from "@/components/store/hero";
 import { SectionHeader } from "@/components/store/section-header";
@@ -13,6 +15,10 @@ import { BrandStory } from "@/components/store/home/brand-story";
 import { Newsletter } from "@/components/store/home/newsletter";
 
 export const revalidate = 60;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { alternates: await localeAlternates("/") };
+}
 
 export default async function HomePage() {
   const [heroBanners, promoStrip, categories, deals, newArrivals, bts, promotions] = await Promise.all([

@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { localeAlternates } from "@/lib/i18n/seo-server";
 import { ContentPage, ContentSection, ContentList } from "@/components/store/content-page";
 
-export const metadata: Metadata = {
+const META: Metadata = {
   title: "Privacy policy",
   description: "How WriteSpace.lk collects, uses and protects your personal information.",
-  alternates: { canonical: "/privacy" },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { ...META, alternates: await localeAlternates("/privacy") };
+}
 
 export default function PrivacyPage() {
   return (

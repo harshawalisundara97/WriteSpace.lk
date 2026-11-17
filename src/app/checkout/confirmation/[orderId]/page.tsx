@@ -12,7 +12,7 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ o
   const db = createAdminClient();
   const { data: order } = await db
     .from("orders")
-    .select("id,order_number,status,total_minor,currency,email")
+    .select("*")
     .eq("id", orderId)
     .maybeSingle();
   if (!order) notFound();
@@ -22,17 +22,21 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ o
     .select("product_name,quantity,line_total_minor")
     .eq("order_id", orderId);
 
-  const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "shipped" || order.status === "delivered";
+  const cod = order.payment_method === "cod";
+  const paid = !cod && (order.status === "paid" || order.status === "fulfilled" || order.status === "shipped" || order.status === "delivered");
+  const placed = paid || (cod && order.status !== "cancelled");
 
   return (
     <div className="ws-container max-w-xl py-16">
       <div className="rounded-2xl border border-line bg-paper-2 p-8 text-center">
-        {paid ? <CheckCircle2 className="mx-auto h-14 w-14 text-mint" /> : <Clock className="mx-auto h-14 w-14 text-gold" />}
+        {placed ? <CheckCircle2 className="mx-auto h-14 w-14 text-mint" /> : <Clock className="mx-auto h-14 w-14 text-gold" />}
         <h1 className="mt-4 font-display text-2xl font-semibold">
-          {paid ? "Order confirmed!" : "Payment processing…"}
+          {placed ? "Order confirmed!" : "Payment processing…"}
         </h1>
         <p className="mt-2 text-ink-soft">
-          {paid
+          {cod && placed
+            ? `Thanks! Please have ${formatMoney(order.total_minor, order.currency)} in cash ready on ${order.delivery_method === "pickup" ? "collection" : "delivery"}. We've emailed the details to ${order.email}.`
+            : paid
             ? `Thanks! We've emailed a receipt to ${order.email}.`
             : "We're confirming your payment. This page will show the final status once it clears."}
         </p>
@@ -49,6 +53,21 @@ export default async function ConfirmationPage({ params }: { params: Promise<{ o
             </li>
           ))}
         </ul>
+        {cod && order.cod_fee_minor > 0 && (
+          <div className="mt-2 flex justify-between text-sm text-ink-soft">
+            <span>Cash on delivery fee</span><span>{formatMoney(order.cod_fee_minor, order.currency)}</span>
+          </div>
+        )}
+        {(order.loyalty_discount_minor ?? 0) > 0 && (
+          <div className="mt-2 flex justify-between text-sm text-ink-soft">
+            <span>Loyalty points ({order.loyalty_points_redeemed})</span><span>− {formatMoney(order.loyalty_discount_minor, order.currency)}</span>
+          </div>
+        )}
+        {order.gift_wrap && (
+          <div className="mt-2 flex justify-between text-sm text-ink-soft">
+            <span>Gift wrap</span><span>{order.gift_wrap_minor > 0 ? formatMoney(order.gift_wrap_minor, order.currency) : "Free"}</span>
+          </div>
+        )}
         <div className="mt-4 flex justify-between border-t border-line pt-4 font-semibold">
           <span>Total</span><span>{formatMoney(order.total_minor, order.currency)}</span>
         </div>

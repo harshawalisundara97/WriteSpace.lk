@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { checkPerm } from "@/lib/auth/guards";
 
 export async function setReviewApproval(id: string, approved: boolean): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const db = createAdminClient();
   const { error } = await db.from("reviews").update({ is_approved: approved }).eq("id", id);
   if (error) return { ok: false, error: error.message };
@@ -21,7 +23,9 @@ export async function setReviewApproval(id: string, approved: boolean): Promise<
 }
 
 export async function deleteReview(id: string): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   const db = createAdminClient();
   const { error } = await db.from("reviews").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };

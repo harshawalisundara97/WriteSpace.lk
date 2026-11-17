@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePerm } from "@/lib/auth/guards";
+import { checkPerm } from "@/lib/auth/guards";
 import { hasSupabase } from "@/lib/env";
 import { DEMO_MESSAGE } from "@/lib/validation/admin";
 import { bundleSchema, normalizeBundleItems } from "@/lib/validation/bundle";
@@ -18,7 +18,9 @@ function revalidateBundles(slug?: string) {
 }
 
 export async function saveBundle(raw: unknown): Promise<Result> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const parsed = bundleSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid bundle" };
@@ -70,7 +72,9 @@ export async function saveBundle(raw: unknown): Promise<Result> {
 }
 
 export async function setBundleStatus(id: string, status: "draft" | "published"): Promise<Result> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const db = createAdminClient();
   const { error } = await db.from("bundles").update({ status }).eq("id", id);
@@ -81,7 +85,9 @@ export async function setBundleStatus(id: string, status: "draft" | "published")
 }
 
 export async function deleteBundle(id: string): Promise<Result> {
-  const ctx = await requirePerm("products:write");
+  const perm = await checkPerm("products:write");
+  if (!perm.ok) return perm;
+  const ctx = perm.ctx;
   if (!hasSupabase()) return { ok: false, error: DEMO_MESSAGE };
   const db = createAdminClient();
   // bundle_items rows cascade on delete (FK on bundle_id).

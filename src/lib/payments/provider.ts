@@ -8,15 +8,20 @@ export interface CreateIntentInput {
   currency: string;
   email: string;
   idempotencyKey: string;
+  /** Human order number (shown on hosted checkout pages). */
+  orderNumber?: string;
+  /** Contact/billing details — required by redirect gateways such as PayHere. */
+  customer?: { fullName: string; phone: string; address: string; city: string; country: string };
 }
 
 export interface CreateIntentResult {
   provider: string;
   providerPaymentId: string;
-  // For client-side confirmation (Stripe PaymentElement). PayHere would instead
-  // return a redirect URL + fields; add those to this union when implemented.
+  // Client-side confirmation (Stripe PaymentElement)…
   clientSecret?: string;
+  // …or a hosted-checkout redirect: the browser POSTs redirectFields to redirectUrl (PayHere).
   redirectUrl?: string;
+  redirectFields?: Record<string, string>;
 }
 
 export interface RefundInput {
