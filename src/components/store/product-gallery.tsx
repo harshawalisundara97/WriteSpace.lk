@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X, ZoomIn } from "lucide-react";
 import type { ProductImage } from "@/lib/types";
+import { demoImage } from "@/lib/catalog/demo-image";
 import { cn } from "@/lib/utils";
 
 const TONES = [
@@ -19,13 +20,17 @@ function hash(id: string, mod: number) {
   return h % mod;
 }
 
-// Premium gallery. Uses real images when present; otherwise renders tasteful
-// tonal placeholder tiles so the layout reads complete before photos are added.
+// Demo photos for products with no real images yet come from the shared helper
+// (src/lib/catalog/demo-image.ts) — stable per product. Replace by uploading real
+// photos in the admin product form, or swap the helper's source.
+
+// Premium gallery. Uses real images when present; otherwise shows deterministic
+// on-theme demo photos so the layout reads complete before real photos are added.
 export function ProductGallery({ images, name, productId }: { images: ProductImage[]; name: string; productId: string }) {
   const hasImages = images.length > 0;
   const tiles = hasImages
     ? images.map((img) => ({ url: img.url, alt: img.alt ?? name }))
-    : TONES.map((t, i) => ({ grad: t, key: i }));
+    : Array.from({ length: 4 }, (_, i) => ({ url: demoImage(productId, i), alt: name }));
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
@@ -49,7 +54,7 @@ export function ProductGallery({ images, name, productId }: { images: ProductIma
           className={cn("absolute inset-0 bg-gradient-to-br transition-transform duration-500", !main.url && main.grad, zoom ? "scale-150" : "scale-100")}
           style={
             main.url
-              ? { backgroundImage: `url(${main.url})`, backgroundSize: "cover", backgroundPosition: zoom ? `${zoom.x}% ${zoom.y}%` : "center" }
+              ? { backgroundImage: `url("${main.url}")`, backgroundSize: "cover", backgroundPosition: zoom ? `${zoom.x}% ${zoom.y}%` : "center" }
               : undefined
           }
         >
@@ -76,7 +81,7 @@ export function ProductGallery({ images, name, productId }: { images: ProductIma
             >
               <span
                 className={cn("absolute inset-0 bg-gradient-to-br", !tile.url && (tile.grad ?? TONES[hash(productId + i, TONES.length)]))}
-                style={tile.url ? { backgroundImage: `url(${tile.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                style={tile.url ? { backgroundImage: `url("${tile.url}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
               />
             </button>
           );

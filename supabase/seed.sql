@@ -141,5 +141,8 @@ on conflict (code) do nothing;
 insert into banners (title, image_url, link_url, placement, position, is_active, starts_at, ends_at) values
   ('Back to School — up to 30% off','/images/banner-bts.jpg','/c/kids-corner','home_hero',1,true,now(),now()+interval '60 days'),
   ('New journals just landed','/images/banner-journals.jpg','/products/a5-dotted-notebook','home_hero',2,true,now(),now()+interval '60 days'),
-  ('Free delivery over LKR 5,000',null,'/promotions','promo_strip',1,true,now(),now()+interval '365 days')
+  ('Free delivery over LKR 5,000',null,'/promotions','promo_strip',1,true,now(),now()+interval '365 days'),
+  ('Festive Season Sale — up to 40% off desk goods',null,'/promotions','home_ad',1,true,now(),now()+interval '60 days'),
+  ('Build your own bundle & save',null,'/bundles','home_ad',2,true,now(),now()+interval '365 days'),
+  ('New arrivals every week',null,'/products?sort=newest','home_ad',3,true,now(),now()+interval '365 days')
 on conflict do nothing;

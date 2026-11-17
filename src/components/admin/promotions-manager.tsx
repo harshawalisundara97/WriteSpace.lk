@@ -134,7 +134,7 @@ export function PromotionsManager({ promotions, banners }: { promotions: Promoti
               <Inp label="Title" value={banner.title} onChange={(v) => setBanner({ ...banner, title: v })} />
               <label className="block"><span className="mb-1 block text-sm text-ink-soft">Placement</span>
                 <select value={banner.placement} onChange={(e) => setBanner({ ...banner, placement: e.target.value as Banner["placement"] })} className="h-11 w-full rounded-xl border border-line bg-paper px-3">
-                  <option value="home_hero">Home hero</option><option value="promo_strip">Promo strip</option><option value="category">Category</option>
+                  <option value="home_hero">Home hero</option><option value="promo_strip">Promo strip</option><option value="home_ad">Home ad</option><option value="category">Category</option>
                 </select>
               </label>
               <Inp label="Image URL" value={banner.image_url} onChange={(v) => setBanner({ ...banner, image_url: v })} />

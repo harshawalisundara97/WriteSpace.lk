@@ -10,6 +10,7 @@ import { useCart } from "@/components/cart/cart-provider";
 import { useQuickView } from "@/components/store/quick-view";
 import { useWishlist } from "@/components/store/wishlist-provider";
 import { cn } from "@/lib/utils";
+import { demoImage } from "@/lib/catalog/demo-image";
 
 const GRADIENTS = [
   "from-[#ffd9cf] to-[#ffb3a0]",
@@ -42,6 +43,9 @@ export function ProductCard({ product, index = 0 }: { product: ProductWithVarian
   const soldOut = available <= 0;
   const currency = primary?.currency ?? "LKR";
   const img = product.images?.[0];
+  // Real image when present, otherwise a stable on-theme demo photo so cards
+  // never fall back to a bare letter placeholder.
+  const imgUrl = img?.url ?? demoImage(product.id);
   const grad = GRADIENTS[hashIndex(product.id, GRADIENTS.length)];
 
   const wishItem = {
@@ -77,13 +81,8 @@ export function ProductCard({ product, index = 0 }: { product: ProductWithVarian
           {/* image / placeholder */}
           <div
             className={cn("absolute inset-0 bg-gradient-to-br transition-transform duration-500 ease-[var(--ease-out-soft)] group-hover:scale-105", grad)}
-            style={img ? { backgroundImage: `url(${img.url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+            style={{ backgroundImage: `url(${imgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
           >
-            {!img && (
-              <span className="absolute inset-0 grid place-items-center font-display text-5xl text-ink/25">
-                {product.name.charAt(0)}
-              </span>
-            )}
           </div>
 
           {/* badges */}
