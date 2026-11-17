@@ -13,6 +13,7 @@ import { StatsBand } from "@/components/store/home/stats-band";
 import { Testimonials } from "@/components/store/home/testimonials";
 import { BrandStory } from "@/components/store/home/brand-story";
 import { Newsletter } from "@/components/store/home/newsletter";
+import { HomeAd } from "@/components/store/home/home-ad";
 
 export const revalidate = 60;
 
@@ -21,9 +22,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [heroBanners, promoStrip, categories, deals, newArrivals, bts, promotions] = await Promise.all([
+  const [heroBanners, promoStrip, adBanners, categories, deals, newArrivals, bts, promotions] = await Promise.all([
     getActiveBanners("home_hero"),
     getActiveBanners("promo_strip"),
+    getActiveBanners("home_ad"),
     getFeaturedCategories(),
     getCollectionProducts("deals-of-the-day", 4),
     getCollectionProducts("new-arrivals", 4),
@@ -116,6 +118,7 @@ export default async function HomePage() {
       )}
 
       <BrandStory />
+      <HomeAd banners={adBanners} />
       <Testimonials />
       <Newsletter />
     </>

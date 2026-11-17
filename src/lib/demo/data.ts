@@ -124,6 +124,9 @@ export const demoBanners: Banner[] = [
   { id: "b1", title: "Back to School — up to 30% off", image_url: null, link_url: "/c/kids-corner", placement: "home_hero", position: 1 },
   { id: "b2", title: "New journals just landed", image_url: null, link_url: "/products/a5-dotted-notebook", placement: "home_hero", position: 2 },
   { id: "b3", title: "Free delivery over LKR 5,000", image_url: null, link_url: "/promotions", placement: "promo_strip", position: 1 },
+  { id: "b4", title: "Festive Season Sale — up to 40% off desk goods", image_url: null, link_url: "/promotions", placement: "home_ad", position: 1 },
+  { id: "b5", title: "Build your own bundle & save", image_url: null, link_url: "/bundles", placement: "home_ad", position: 2 },
+  { id: "b6", title: "New arrivals every week", image_url: null, link_url: "/products?sort=newest", placement: "home_ad", position: 3 },
 ];
 
 const endOfDay = new Date(); endOfDay.setHours(23, 59, 59, 0);

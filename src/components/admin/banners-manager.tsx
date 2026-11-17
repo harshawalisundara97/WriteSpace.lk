@@ -9,11 +9,12 @@ import { saveBanner, deleteBanner } from "@/lib/admin/promo-actions";
 import { useToast } from "@/components/admin/toast";
 import type { AdminBanner } from "@/lib/admin/catalog-queries";
 
-type Placement = "home_hero" | "promo_strip" | "category";
+type Placement = "home_hero" | "promo_strip" | "home_ad" | "category";
 
 const PLACEMENTS: { value: Placement; label: string; blurb: string }[] = [
   { value: "home_hero", label: "Home hero", blurb: "Rotating slides at the top of the homepage." },
   { value: "promo_strip", label: "Promo strip", blurb: "Slim announcement bar above the storefront." },
+  { value: "home_ad", label: "Home ad", blurb: "Promotional ad section in the middle of the homepage." },
   { value: "category", label: "Category", blurb: "Banners shown on category landing pages." },
 ];
 
